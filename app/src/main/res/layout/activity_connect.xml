@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:tools="http://schemas.android.com/tools"
+xmlns:app="http://schemas.android.com/apk/res-auto"
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+tools:context=".ui.activities.ConnectActivity">
+    <com.google.android.material.appbar.AppBarLayout
+            android:layout_width="match_parent"
+            android:layout_height="350dp"
+            android:id="@+id/app_bar" tools:ignore="MissingConstraints">
+
+        <com.google.android.material.appbar.CollapsingToolbarLayout
+                android:id="@+id/collapsing_toolbar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:contentScrim="?attr/colorPrimary"
+                app:statusBarScrim="@android:color/transparent"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+                app:collapsedTitleGravity="center"
+                app:expandedTitleGravity="center"
+                app:layout_scrollFlags="scroll|exitUntilCollapsed">
+
+            <FrameLayout android:layout_width="match_parent"
+                         android:layout_height="match_parent"
+                         android:fitsSystemWindows="true"
+                         android:visibility="visible">
+                <ImageView android:layout_width="match_parent"
+                           android:layout_height="match_parent"
+                           app:srcCompat="@drawable/background_1"
+                           android:scaleType="centerCrop"
+                           android:id="@+id/ivBackground"
+                           android:contentDescription="这是一张图片"/>
+                <com.sanmen.bluesky.subway.widget.LoadingCircleView
+                        android:id="@+id/loadView"
+                        android:layout_width="match_parent"
+                        android:layout_height="240dp"
+                        android:layout_gravity="bottom"
+                        app:border_width="14dp"
+                        app:border_color="@color/arcColor"
+                        app:show_center_text="true"
+                        app:show_sub_text="false"
+                        app:sub_text="下一页 >"
+                        android:layout_marginBottom="30dp"/>
+
+                <TextView
+                        android:id="@+id/tvCenterText"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:textColor="@android:color/white"
+                        android:gravity="center"
+                        android:visibility="visible"
+                        android:textSize="40sp"/>
+            </FrameLayout>
+
+            <androidx.appcompat.widget.Toolbar
+                    android:id="@+id/toolBar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="?attr/actionBarSize"
+                    app:navigationIcon="@drawable/ic_back"
+                    app:layout_collapseMode="pin">
+                <TextView
+                        android:id="@+id/tvTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@android:color/white"
+                        android:background="@android:color/holo_red_dark"
+                        android:layout_centerInParent="true"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:visibility="gone"
+                        android:textSize="22sp"/>
+            </androidx.appcompat.widget.Toolbar>
+        </com.google.android.material.appbar.CollapsingToolbarLayout>
+    </com.google.android.material.appbar.AppBarLayout>
+
+<androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/white"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+    <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+        <androidx.recyclerview.widget.RecyclerView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:id="@+id/rvDriveRecord"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:context=".ui.activities.ConnectActivity"
+                tools:listitem="@layout/item_drive">
+
+        </androidx.recyclerview.widget.RecyclerView>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.core.widget.NestedScrollView>
+
+    <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/white"
+            android:layout_gravity="bottom">
+        <Button
+                android:id="@+id/btnLinked"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:layout_marginStart="30dp"
+                android:layout_marginEnd="30dp"
+                android:elevation="15dp"
+                android:background="@drawable/selector_btn"
+                android:textSize="16sp"
+                android:textColor="@android:color/white"
+                android:text="连接" tools:ignore="MissingConstraints"/>
+
+    </LinearLayout>
+
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:padding="20dp">
+
+    <TextView
+            android:text="告警延迟时间(S)"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"/>
+
+    <com.sanmen.bluesky.subway.widget.KBubbleSeekBar
+            android:id="@+id/seekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            app:bsb_bubble_text_color="#ffffff"
+            app:bsb_marks="false"
+            app:bsb_max="100"
+            app:bsb_min="0"
+            app:bsb_second_track_color="@color/colorPrimary"
+            app:bsb_section_count="5"
+            app:bsb_section_text_position="below_section_mark"
+            app:bsb_show_progress_in_float="true"
+            app:bsb_show_section_mark="false"
+            app:bsb_show_section_text="true"
+            app:bsb_show_thumb_text="true"
+            app:bsb_thumb_color="#ffffff"
+            app:bsb_thumb_text_color="#cabf18"
+            app:bsb_touch_to_seek="true"
+            app:bsb_track_color="#d1cccc"
+            app:bsb_track_size="14dp"/>
+
+</LinearLayout>

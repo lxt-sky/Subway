@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/grayBackGround"
+        tools:context=".ui.activities.AlarmRecordActivity">
+    <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolBar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:fitsSystemWindows="true"
+            app:navigationIcon="@drawable/ic_back"
+            android:background="@color/colorPrimary"
+            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+            app:title="报警详情" app:layout_constraintTop_toTopOf="parent">
+
+    </androidx.appcompat.widget.Toolbar>
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:id="@+id/tvBegin"
+            android:layout_marginTop="20dp"
+            app:layout_constraintTop_toBottomOf="@+id/toolBar"
+            android:textColor="@color/grayText" android:text="开始："
+            app:layout_constraintStart_toStartOf="@+id/tvStartTime"
+    />
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/tvEnd" android:layout_marginTop="20dp"
+            app:layout_constraintTop_toBottomOf="@+id/toolBar" app:layout_constraintStart_toStartOf="@+id/tvEndTime"
+            android:textColor="@color/grayText" android:text="结束："/>
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/tvStartTime" android:layout_marginTop="10dp"
+            app:layout_constraintTop_toBottomOf="@+id/tvBegin"
+            tools:text="2019-01-01 00:20:21"
+            android:textColor="@color/grayText"
+            android:textSize="12sp" app:layout_constraintStart_toStartOf="@+id/linearLayout2"
+            android:layout_marginStart="10dp"/>
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/tvEndTime"
+            android:layout_marginTop="10dp" app:layout_constraintTop_toBottomOf="@+id/tvEnd"
+            tools:text="2019-01-01 21:20:59"
+            android:textColor="@color/grayText"
+            android:textSize="12sp" android:layout_marginEnd="10dp"
+            app:layout_constraintEnd_toEndOf="@+id/linearLayout2"/>
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            app:layout_constraintTop_toBottomOf="@+id/tvStartTime"
+            android:layout_marginTop="20dp" android:layout_marginBottom="10dp"
+            app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="10dp" app:layout_constraintEnd_toEndOf="parent" android:layout_marginEnd="10dp"
+            android:background="@drawable/shape_background_radius" android:id="@+id/linearLayout2">
+        <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvAlarmList"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/item_alarm_1"/>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

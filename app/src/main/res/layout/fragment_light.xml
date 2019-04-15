@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             xmlns:tools="http://schemas.android.com/tools"
+             xmlns:kosmos="http://schemas.android.com/apk/res-auto"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             android:background="@android:color/white"
+             tools:context=".ui.fragments.LightFragment">
+
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="20dp">
+        <TextView
+                android:text="光照临界值"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="22sp"
+                android:textColor="@color/blackText"
+                android:gravity="center"/>
+        <com.sanmen.bluesky.subway.widget.KBubbleSeekBar
+                android:id="@+id/lightThreshold"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                kosmos:bsb_bubble_text_color="#ffffff"
+                kosmos:bsb_colors="#ffffffff_#ff00bcd4_#ff8237fc"
+                kosmos:bsb_marks="true"
+                kosmos:bsb_max="100"
+                kosmos:bsb_min="0"
+                kosmos:bsb_second_track_color="@color/colorPrimary"
+                kosmos:bsb_section_text_position="bottom_sides"
+                kosmos:bsb_show_section_mark="false"
+                kosmos:bsb_show_section_text="true"
+                kosmos:bsb_show_thumb_text="true"
+                kosmos:bsb_thumb_color="#ffffff"
+                kosmos:bsb_thumb_text_color="#cabf18"
+                kosmos:bsb_touch_to_seek="true"
+                kosmos:bsb_track_color="#d1cccc"
+                kosmos:bsb_track_size="5dp"/>
+    </LinearLayout>
+
+</FrameLayout>

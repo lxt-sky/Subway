@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#00bcd4</color>
+    <color name="colorPrimaryDark">#01808d</color>
+    <color name="colorAccent">#2979ff</color>
+    <color name="whiteStatusBar">#ffffff</color>
+
+    <color name="startColor">#8237fc</color>
+    <color name="centerColor">#3070f9</color>
+    <color name="endColor">#02a8e4</color>
+
+    <color name="name">#222222</color>
+    <color name="time">#818182</color>
+    <color name="grayText">#c4c4c4</color>
+    <color name="grayText2">#818182</color>
+    <color name="blackText">#222222</color>
+    <color name="grayBackGround">#FBFBFB</color>
+    <color name="grayLine">#CCCCCC</color>
+    <color name="disabledColor">#81dfdbdb</color>
+
+    <color name="arcColor">#81dfdbdb</color>
+    <color name="progressColor">#d42298ec</color>
+    <color name="textColor">#ffffff</color>
+
+</resources>
