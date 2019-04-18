@@ -1,6 +1,7 @@
 package com.sanmen.bluesky.subway.widget;
 
 import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.*;
@@ -48,6 +49,17 @@ public class LoadingCircleView extends View {
     private float angle =0;
 
     private ObjectAnimator objectAnimator;
+    private float startAngle=0f;
+    private float spinSpeed = 0f;
+    private boolean isSpinning=false;
+    private String oldText="";
+    private String currentText="";
+    private Rect textRect = new Rect();
+    private float mMaxMoveHeight=80;
+    private float mOutterMoveHeight=0;
+    private float mCurrentAlphaValue=0;
+    private float mCurrentMoveHeight=0;
+    private int loadState=0;
 
     public LoadingCircleView(Context context) {
        this(context,null);
@@ -73,6 +85,7 @@ public class LoadingCircleView extends View {
         isShowCenterText = typedArray.getBoolean(R.styleable.LoadingCircleView_show_center_text,true);
         isShowSubText  = typedArray.getBoolean(R.styleable.LoadingCircleView_show_sub_text,false);
         subText = typedArray.getString(R.styleable.LoadingCircleView_sub_text);
+        spinSpeed = typedArray.getFloat(R.styleable.LoadingCircleView_spin_speed,10f);
         typedArray.recycle();
     }
 
@@ -82,16 +95,14 @@ public class LoadingCircleView extends View {
         mBorderPaint.setStyle(Paint.Style.STROKE);
         mBorderPaint.setColor(borderColor);
         mBorderPaint.setAntiAlias(true);
-//        mBorderPaint.setShadowLayer(20,0,0,Color.argb(128, 249, 94, 94));
         mBorderPaint.setStrokeWidth(borderWidth);
-//        setLayerType(View.LAYER_TYPE_SOFTWARE, null);  // 关闭硬件加速,setShadowLayer 才会有效
-//        this.setWillNotDraw(false);
 
         //画阴影
         mShadowPaint.setStyle(Paint.Style.STROKE);
         mShadowPaint.setColor(Color.parseColor("#a1dfdbdb"));
         mShadowPaint.setAntiAlias(true);
-        mShadowPaint.setStrokeWidth(dip2px(10));
+        mShadowPaint.setStrokeWidth(dip2px(16));
+    //    mShadowPaint.setShadowLayer(20f,0,0,Color.argb(100,100,100,100));
 
         //文本画笔
         mTextPaint.setStyle(Paint.Style.FILL);
@@ -104,34 +115,27 @@ public class LoadingCircleView extends View {
         mSubTextPaint.setColor(Color.parseColor("#F0ECEC"));
         mSubTextPaint.setTextSize(30);
 
-        //属性动画-旋转
-        objectAnimator = ObjectAnimator.ofFloat(this,"rotation",0f,360f);
-        objectAnimator.setDuration(3000);//设置动画时间
-        objectAnimator.setRepeatCount(ObjectAnimator.INFINITE);
-        objectAnimator.setRepeatMode(ObjectAnimator.RESTART);
-
-
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
 
-
+        super.onDraw(canvas);
         int viewWidth = getWidth();
         int viewHeight = getHeight();
         int viewSize = Math.min(viewWidth,viewHeight);
         //绘制半径
-        float measureRadius = (viewSize-borderWidth)/2.0f;
+        float measureRadius = (viewSize-4*borderWidth)/2.0f;
         //中心坐标
         float centerX = viewWidth/2.0f;
         float centerY = viewHeight/2.0f;
 
         //矩阵
         RectF oval = new RectF();
-        oval.left = centerX-measureRadius+5f;
-        oval.top = centerY-measureRadius+5f;
-        oval.right = centerX+measureRadius+5f;
-        oval.bottom = centerY+measureRadius+5f;
+        oval.left = centerX-measureRadius;
+        oval.top = centerY-measureRadius;
+        oval.right = centerX+measureRadius;
+        oval.bottom = centerY+measureRadius;
 
         //计算文字绘制X坐标
         int textX= toCalculateTextX(mTextPaint,centerText);
@@ -144,7 +148,7 @@ public class LoadingCircleView extends View {
 
         if (isShowCenterText){
             //中间文字
-            canvas.drawText(centerText,textX,textY,mTextPaint);
+//            canvas.drawText(centerText,textX,textY,mTextPaint);
         }
 
         if (isShowSubText){
@@ -157,17 +161,69 @@ public class LoadingCircleView extends View {
             canvas.drawText(subText,subTextX,subTextY+100,mSubTextPaint);
         }
 
-        canvas.save();
-
         //渐变
         SweepGradient gradient = new SweepGradient(centerX,centerY,new int[] {Color.CYAN,Color.DKGRAY,Color.GRAY,Color.LTGRAY,Color.MAGENTA,
                 Color.GREEN,Color.TRANSPARENT, Color.BLUE }, null);
         mShadowPaint.setShader(gradient);
-        canvas.drawArc(oval,0f,120f,false,mShadowPaint);
-        //旋转
-//        canvas.rotate(angle,centerX+5f,centerY+5f);
+        canvas.drawArc(oval,startAngle-90,90f,false,mShadowPaint);
 
-        super.onDraw(canvas);
+        if (isSpinning){
+            updateProgress();
+        }
+
+        for (int i=0;i<2;i++){
+
+            if (loadState==0){
+
+                mTextPaint.setAlpha(255);
+                canvas.drawText(currentText, toCalculateTextX(mTextPaint,currentText), textY, mTextPaint);
+            }else if (loadState==1){
+                //位数数字不同，表示需要需要处理移动操作。
+                mTextPaint.setAlpha((int) (255 * (1 - mCurrentAlphaValue)));
+                canvas.drawText(oldText, toCalculateTextX(mTextPaint,oldText), mOutterMoveHeight + textY, mTextPaint);
+                mTextPaint.setAlpha((int) (255 * mCurrentAlphaValue));
+                canvas.drawText(currentText,  toCalculateTextX(mTextPaint,currentText), mCurrentMoveHeight + textY, mTextPaint);
+
+            }
+
+        }
+
+    }
+
+    private synchronized void jumpCenterText() {
+
+        ValueAnimator animator = ValueAnimator.ofFloat(mMaxMoveHeight, 0);
+        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mCurrentMoveHeight = (float) animation.getAnimatedValue();
+                invalidate();
+            }
+        });
+        animator.setDuration(1000);
+        animator.start();
+
+        ValueAnimator animator1 = ValueAnimator.ofFloat(0, 1);
+        animator1.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mCurrentAlphaValue = (float) animation.getAnimatedValue();
+                invalidate();
+            }
+        });
+        animator1.setDuration(1000);
+        animator1.start();
+
+        ValueAnimator animator2 = ValueAnimator.ofFloat(0, -mMaxMoveHeight);
+        animator2.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            @Override
+            public void onAnimationUpdate(ValueAnimator animation) {
+                mOutterMoveHeight = (float) animation.getAnimatedValue();
+                invalidate();
+            }
+        });
+        animator2.setDuration(1000);
+        animator2.start();
     }
 
     @Override
@@ -203,34 +259,73 @@ public class LoadingCircleView extends View {
 
     }
 
-    public void playAnimation(){
-        objectAnimator.start();
+    /**
+     * 中心文本的翻页效果
+     */
+    public void nextText(String text,int stateNum){
+
+        oldText = currentText;
+        currentText = text;
+        loadState = stateNum;
+
+        jumpCenterText();
     }
 
-    public void pauseAnimation(){
-        objectAnimator.pause();
+    /**
+     * 更新其实绘制角度
+     */
+    private void updateProgress() {
 
+        startAngle+=spinSpeed;
+        if (startAngle>360){
+            startAngle = 0;
+        }
+        postInvalidateDelayed(10);
     }
 
-    public void cancelAnimation(){
-        objectAnimator.pause();
-        objectAnimator.end();
-    }
-
+    /**
+     * 设置中心文本
+     * @param text
+     */
     public void setCenterText(String text) {
         isShowCenterText = true;
         this.centerText = text;
         //重新绘制
-        postInvalidate();
+        invalidate();
     }
 
+    /**
+     * 显示中心文本
+     * @param state
+     */
     public void isShowCenterText(boolean state){
         isShowCenterText = state;
     }
 
+    /**
+     * 显示子标题
+     * @param state
+     */
     public void isShowSubText(boolean state){
         isShowSubText = state;
         invalidate();
+    }
+
+    /**
+     * 开始旋转
+     */
+    public void startSpinning(){
+        isSpinning = true;
+        postInvalidate();
+    }
+
+    /**
+     * 结束旋转
+     */
+    public void stopSpinning(){
+        isSpinning = false;
+        startAngle = 0;
+        postInvalidate();
     }
 
     /**
@@ -257,16 +352,4 @@ public class LoadingCircleView extends View {
         return (int) (dipVal*scale+0.5f);
     }
 
-    class RotateAnimator extends RotateAnimation{
-
-        public RotateAnimator(float fromDegrees, float toDegrees, float pivotX, float pivotY) {
-            super(fromDegrees, toDegrees, pivotX, pivotY);
-        }
-
-        @Override
-        protected void applyTransformation(float interpolatedTime, Transformation t) {
-            super.applyTransformation(interpolatedTime, t);
-            angle = interpolatedTime * 360;
-        }
-    }
 }

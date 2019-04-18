@@ -63,7 +63,7 @@ public class ExcelHelper {
             insertRow(driveSheet, (short) 0,new Object[]{"记录ID","记录名称","开始时间","结束时间"}, cellStyle);
             for (short i = 0; i < driveSize; i++) {
                 DriveRecord driveBean = (DriveRecord) driveList.get(i);
-                Object[] values = {driveBean.getId(),driveBean.getDriveName(),driveBean.getDriveBeginTime(),driveBean.getDriveEndTime()};
+                Object[] values = {driveBean.getRecordId(),driveBean.getDriveName(),driveBean.getDriveBeginTime(),driveBean.getDriveEndTime()};
                 insertRow(driveSheet, (short) (i+1), values, cellStyle);
             }
         }

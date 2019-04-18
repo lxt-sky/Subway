@@ -23,10 +23,6 @@ class SettingActivity : BaseActivity(),SettingFragment.OnFragmentInteractionList
         ImmersionBar.with(this).titleBar(R.id.toolBar).init()
     }
 
-    override fun initData() {
-        super.initData()
-    }
-
     override fun initView() {
         super.initView()
 

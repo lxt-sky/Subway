@@ -1,5 +1,7 @@
 package com.sanmen.bluesky.subway
 
+import java.util.*
+
 /**
  * @author lxt_bluesky
  * @date 2019/4/10
@@ -12,11 +14,26 @@ object Constant {
      */
     const val ACTION_SEARCH_STARTED = "com.sanmen.bluesky.subway.ACTION_SEARCH_STARTED"
 
-    const val ACTION_FIND_DEVICE = "com.sanmen.bluesky.subway.ACTION_FIND_DEVICE"
+    const val ACTION_SEARCH_FAILED = "com.sanmen.bluesky.subway.ACTION_SEARCH_FAILED"
+
+    /**
+     * 蓝牙配对失败
+     */
+    const val BOND_FAILED = "com.sanmen.bluesky.subway.BOND_FAILED"
+
+    /**
+     * 蓝牙配对成功
+     */
+    const val BOND_SUCCESS = "com.sanmen.bluesky.subway.BOND_SUCCESS"
     /**
      * 连接成功
      */
     const val ACTION_CONNECTED = "com.sanmen.bluesky.subway.ACTION_CONNECTED"
+
+    /**
+     * 连接中
+     */
+    const val ACTION_CONNECTING = "com.sanmen.bluesky.subway.ACTION_CONNECTING"
     /**
      * 连接断开
      */
@@ -50,6 +67,11 @@ object Constant {
      * 读取数据成功
      */
     const val ACTION_READ_DATA_SUCCESS = "com.sanmen.bluesky.subway.ACTION_READ_DATA_SUCCESS "
+
+    /**
+     * 行车方向
+     */
+    const val DRIVE_DIRECTION = "DRIVE_DIRECTION"
     /**
      * 行车记录ID
      */

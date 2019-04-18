@@ -153,12 +153,14 @@ class SettingFragment : Fragment() {
                     this.context!!,resources.getString(R.string.dialog_data_clear),
                     DialogInterface.OnClickListener { _, _ ->
                         appExecutors.diskIO().execute {
-                            val driveList = driveRepository.getDriveRecordList()
-                            val num = driveRepository.deleteAllDriveRecord(driveList)
+//                            val driveList = driveRepository.getDriveRecordList()
+//                            val num = driveRepository.deleteAllDriveRecord(driveList)
+                            database.clearAllTables()
+
                             appExecutors.mainTread().execute {
-                                if (num!=-1){
+//                                if (num!=-1){
                                     Toast.makeText(activity,"清除数据成功！",Toast.LENGTH_SHORT).show()
-                                }
+//                                }
                             }
                         }
                     }).show()
@@ -207,6 +209,7 @@ class SettingFragment : Fragment() {
         appExecutors.diskIO().execute {
             val alarmList:List<AlarmInfo> = alarmRepository.getAllAlarmInfo()
             val recordList:List<DriveRecord> = driveRepository.getDriveRecordList()
+            data.clear()
             data.addAll(alarmList)
             data.addAll(recordList)
             appExecutors.mainTread().execute {

@@ -2,46 +2,30 @@ package com.sanmen.bluesky.subway.service
 
 import android.app.IntentService
 import android.app.Service
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.*
 import android.content.Intent
 import android.content.Context
 import android.os.Binder
 import android.os.IBinder
-import android.provider.Settings.Global.DEVICE_NAME
-import android.widget.Toast
+import android.util.Log
 import com.inuker.bluetooth.library.BluetoothClient
-import com.inuker.bluetooth.library.connect.options.BleConnectOptions
-import com.inuker.bluetooth.library.connect.response.BleConnectResponse
-import com.inuker.bluetooth.library.model.BleGattProfile
-import com.inuker.bluetooth.library.search.SearchRequest
-import com.inuker.bluetooth.library.search.SearchResult
-import com.inuker.bluetooth.library.search.response.SearchResponse
 import com.sanmen.bluesky.subway.manager.ClientManager
 import java.util.*
 
-import com.inuker.bluetooth.library.Constants
-import com.inuker.bluetooth.library.connect.BleConnectManager.disconnect
-import com.inuker.bluetooth.library.connect.response.BleReadResponse
-import com.inuker.bluetooth.library.model.BleGattCharacter
-import com.inuker.bluetooth.library.model.BleGattService
-import com.inuker.bluetooth.library.utils.ByteUtils
-import com.sanmen.bluesky.subway.Constant
+import com.inuker.bluetooth.library.receiver.listener.BluetoothBondListener
 import com.sanmen.bluesky.subway.Constant.ACTION_CONNECTED
-import com.sanmen.bluesky.subway.Constant.ACTION_CONNECT_FAILED
+import com.sanmen.bluesky.subway.Constant.ACTION_CONNECTING
 import com.sanmen.bluesky.subway.Constant.ACTION_DISCONNECTED
-import com.sanmen.bluesky.subway.Constant.ACTION_FIND_DEVICE
 import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_FAILED
 import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_SUCCESS
-import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_DEVICE_CANCELED
-import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_DEVICE_NONE
-import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_STARTED
-import com.sanmen.bluesky.subway.data.dao.AlarmDao
-import com.sanmen.bluesky.subway.data.dao.DriveDao
-import com.sanmen.bluesky.subway.data.database.DriveDatabase
+import com.sanmen.bluesky.subway.Constant.BOND_FAILED
+import com.sanmen.bluesky.subway.Constant.BOND_SUCCESS
+import java.io.IOException
+import java.io.InputStream
+import kotlin.concurrent.thread
 
 /**
- * 蓝牙串口服务UUID
+ * 蓝牙串口服务UUID--SPP
  */
 private const val MY_UUID = "00001101-0000-1000-8000-00805F9B34FB"
 
@@ -54,18 +38,13 @@ private const val MY_UUID = "00001101-0000-1000-8000-00805F9B34FB"
  */
 class BluetoothService : Service() {
 
-    private var deviceList = mutableListOf<BluetoothDevice>()
+    private var isConnected: Boolean = false
 
-    /**
-     * 目标设备名称 Lsensor
-     */
-    private val mTargetDeviceName = "Mi Band 3"
+    private val TAG = ".BluetoothService"
 
-    private var mDevice: BluetoothDevice? = null
+    private var mTargetDevice: BluetoothDevice? = null
 
-    private var Uuid_Character: UUID? = null
-
-    private var Uuid_Service: UUID? = null
+    private lateinit var connectThread:Thread
 
     private val mBinder:MyBinder by lazy {
         MyBinder(this@BluetoothService)
@@ -73,6 +52,10 @@ class BluetoothService : Service() {
 
     private val mClient:BluetoothClient by lazy {
         ClientManager.getClient()
+    }
+
+    private val mBluetoothAdapter:BluetoothAdapter by lazy {
+        BluetoothAdapter.getDefaultAdapter()
     }
 
     /**
@@ -86,52 +69,88 @@ class BluetoothService : Service() {
      * 关闭蓝牙
      */
     fun closeBluetooth(){
-        if (mDevice==null) return
-        mClient.disconnect(mDevice!!.address)
+        if (mTargetDevice==null) return
+        mClient.disconnect(mTargetDevice!!.address)
         mClient.closeBluetooth()
     }
 
-    fun getBlueDevice(): BluetoothDevice? =mDevice
-
+    override fun onCreate() {
+        super.onCreate()
+        mClient.registerBluetoothBondListener(mBluetoothBondListener)
+    }
 
     /**
-     * 搜索蓝牙设备列表
+     * 连接目标设备
      */
-    fun searchBluetoothDevice(){
-        if (!mClient.isBluetoothOpened){
-            mClient.openBluetooth()
+    fun connectDevice(address:String){
+        //获取目标设备
+        mTargetDevice = mTargetDevice?:mBluetoothAdapter.getRemoteDevice(address)
+        //未配对设备发起配对
+        if (mTargetDevice!!.bondState==BluetoothDevice.BOND_NONE){
+            mTargetDevice!!.createBond()
         }else{
-            getBluetoothDevice()
+            //配对成功直接连接
+            connect()
         }
     }
 
     /**
-     * 连接设备
+     * 发起蓝牙连接
      */
-    fun connectBluetooth(){
-        if (mDevice==null) return
-
-        val options = BleConnectOptions.Builder()
-            .setConnectRetry(3)
-            .setConnectTimeout(20000)
-            .setServiceDiscoverRetry(3)
-            .setServiceDiscoverTimeout(10000)
-            .build()
-
-        mClient.connect(mDevice!!.address,options) { code, data ->
-            //请求连接成功
-            if (code==Constants.REQUEST_SUCCESS){
-                //广播当前状态为连接成功
-                broadcastUpdate(ACTION_CONNECTED)
-                setGattProfile(data)
-                readData()
-            }else{
-                //广播当前状态为连接失败
-                broadcastUpdate(ACTION_CONNECT_FAILED)
-
-            }
+    fun connect(){
+        if (mTargetDevice == null) {
+            return
         }
+        //socket连接-spp协议连接
+        val bluetoothSocket = mTargetDevice!!.createRfcommSocketToServiceRecord(UUID.fromString(MY_UUID))
 
+        //开启线程
+        connectThread=thread(start = true,name = "ConnectThread"){
+            isConnected=true
+            //连接中
+            broadcastUpdate(ACTION_CONNECTING)
+            if (isConnected){
+                try {
+                    //执行连接
+                    bluetoothSocket.connect()
+                }catch (e: IOException){
+                    //连接失败
+                    broadcastUpdate(ACTION_DISCONNECTED)
+                    return@thread
+                }
+            }
+            val inputStream:InputStream
+            try {
+                inputStream = bluetoothSocket.inputStream
+            }catch (e:IOException){
+                broadcastUpdate(ACTION_DISCONNECTED)
+                return@thread
+            }
+
+            //连接成功
+            broadcastUpdate(ACTION_CONNECTED)
+
+            var buffer = ByteArray(1024)
+            while (isConnected){
+                try {
+                    var bytes = inputStream.read(buffer)
+
+                    if(bytes>0){
+                        val data = ByteArray(bytes)
+                        System.arraycopy(buffer, 0, data, 0, bytes)
+                        val intent = Intent(ACTION_READ_DATA_SUCCESS)
+                        intent.putExtra("DATA", String(data))
+                        sendBroadcast(intent)
+                    }
+                }catch (e:IOException){
+                    broadcastUpdate(ACTION_READ_DATA_FAILED)
+                    break
+                }
+            }
+            bluetoothSocket.close()
+            if (!isConnected) run { Log.d(TAG, "ConnectedThread END since user cancel.") }
+            else run { Log.d(TAG, "ConnectedThread END.") }
+        }
     }
 
     /**
@@ -139,116 +158,28 @@ class BluetoothService : Service() {
      */
     fun disConnect(){
         //广播当前状态为连接已断开
+        isConnected = false
         broadcastUpdate(ACTION_DISCONNECTED)
-        mClient.disconnect(mDevice!!.address)
-        mDevice = null
+        mTargetDevice = null
+        connectThread.interrupt()
 
     }
 
     /**
-     * 获取蓝牙设备列表
+     * 设备配对监听
      */
-    private fun getBluetoothDevice() {
-        val request:SearchRequest = SearchRequest.Builder()
-            .searchBluetoothLeDevice(3000,3)
-            .searchBluetoothClassicDevice(5000)
-            .searchBluetoothLeDevice(2000)
-            .build()
-        mClient.search(request,response)
-    }
+    private val mBluetoothBondListener = object : BluetoothBondListener() {
+        override fun onBondStateChanged(mac: String?, bondState: Int) {
 
-    private val response = object :SearchResponse{
-        override fun onSearchStopped() {
-
-        }
-
-        override fun onSearchStarted() {
-            broadcastUpdate(ACTION_SEARCH_STARTED)
-        }
-
-        override fun onDeviceFounded(result: SearchResult?) {
-            val device= result?.device
-            if (device != null ) {
-
-                if (mTargetDeviceName == device.name){
-                    mDevice = device
-                    //找到指定设备，停止扫描
-                    mClient.stopSearch()
-                    broadcastUpdate(ACTION_FIND_DEVICE)
-
-                    //执行连接请求
-                    connectBluetooth()
-                }
-
-            }else{
-                //广播，无目标蓝牙设备
-                broadcastUpdate(ACTION_SEARCH_DEVICE_NONE)
+            if (bondState==BluetoothDevice.BOND_BONDED){
+                connect()
+                //广播配对成功
+                broadcastUpdate(BOND_SUCCESS)
+                return
             }
-
+            //配对失败，广播连接失败
+            broadcastUpdate(BOND_FAILED)
         }
-
-        override fun onSearchCanceled() {
-
-            broadcastUpdate(ACTION_SEARCH_DEVICE_CANCELED)
-        }
-
-    }
-
-    /**
-     * 读取数据
-     */
-    private fun readData() {
-        if (Uuid_Character!=null&&Uuid_Service!=null&&mDevice!=null){
-            mClient.read(mDevice!!.address,Uuid_Service,Uuid_Character,mReadRsp)
-        }
-
-    }
-
-    /**
-     * 提起配置信息
-     */
-    private fun setGattProfile(data: BleGattProfile?) {
-        //遍历服务列表，还可以根据UUID获取指定服务data.getService(UUID)
-        val services: MutableList<BleGattService>? = data?.services ?: return
-        if (services != null) {
-            for (service in services){
-                val characters:List<BleGattCharacter> = service.characters
-                for (character in characters){
-                    if (BluetoothGattCharacteristic.PROPERTY_READ == character.property) {
-                        Uuid_Character = character.uuid
-                        Uuid_Service = service.uuid
-                        return
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * 读取数据
-     */
-    private val mReadRsp: BleReadResponse = BleReadResponse { code, data ->
-        if (code == Constants.REQUEST_SUCCESS) {
-
-            //解析指令,完成后续任务.
-            //广播当前状态
-            broadcastUpdate(ACTION_READ_DATA_SUCCESS)
-
-            toParseInstruction(ByteUtils.byteToString(data))
-        } else {
-
-            //广播当前状态
-            broadcastUpdate(ACTION_READ_DATA_FAILED)
-        }
-    }
-
-    /**
-     * 解析指令
-     */
-    private fun toParseInstruction(data:String){
-        //在此进行数据的处理并返回至Activity当中
-
-
     }
 
     /**
@@ -262,14 +193,18 @@ class BluetoothService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? =mBinder
 
-    override fun onUnbind(intent: Intent?): Boolean {
+    override fun onDestroy() {
+        super.onDestroy()
 
-        return super.onUnbind(intent)
+        mClient.unregisterBluetoothBondListener(mBluetoothBondListener)
     }
 
     class MyBinder(private val service: BluetoothService):Binder(){
+        var context: Context? =null
 
-        fun getService():BluetoothService{
+        fun getService(context: Context):BluetoothService{
+
+            this.context = context
             return service
         }
     }

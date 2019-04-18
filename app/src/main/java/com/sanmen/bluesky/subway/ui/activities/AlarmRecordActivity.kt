@@ -16,15 +16,15 @@ import kotlinx.android.synthetic.main.activity_alarm_record.*
 
 class AlarmRecordActivity : BaseActivity() {
 
-    var alarmData = mutableListOf<AlarmInfo>()
+    private var alarmData = mutableListOf<AlarmInfo>()
 
-    var mRecordId:Int = -1
+    private var mRecordId:Int = -1
 
-    lateinit var beginTime:String
+    private lateinit var beginTime:String
 
-    lateinit var endTime:String
+    private lateinit var endTime:String
 
-    lateinit var alarmList:List<AlarmInfo>
+    private lateinit var alarmList:List<AlarmInfo>
 
     private lateinit var alarmRepository: AlarmRepository
 

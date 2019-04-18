@@ -37,11 +37,12 @@ tools:context=".ui.activities.ConnectActivity">
                         android:layout_width="match_parent"
                         android:layout_height="240dp"
                         android:layout_gravity="bottom"
-                        app:border_width="14dp"
+                        app:border_width="8dp"
                         app:border_color="@color/arcColor"
                         app:show_center_text="true"
                         app:show_sub_text="false"
                         app:sub_text="下一页 >"
+                        app:spin_speed="5"
                         android:layout_marginBottom="30dp"/>
 
                 <TextView

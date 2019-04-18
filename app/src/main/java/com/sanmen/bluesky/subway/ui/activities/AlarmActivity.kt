@@ -155,7 +155,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
             R.id.ivAdjust->{
 
                 dialog.run {
-                    var bundle = Bundle()
+                    val bundle = Bundle()
                     bundle.putInt(Constant.DELAY_TIME,delayTime)
                     this.arguments= bundle
                     this.show(supportFragmentManager,"timeSelectDialog")
@@ -163,7 +163,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
             }
             R.id.btnAddData->{
                 //测试数据添加
-                var alarmInfo=AlarmInfo()
+                val alarmInfo=AlarmInfo()
 
                 alarmInfo.run {
                     this.alarmText="请确认出站信号"
@@ -180,7 +180,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         }
     }
 
-    private val itemClickListener = BaseQuickAdapter.OnItemClickListener{adapter, view, position ->
+    private val itemClickListener = BaseQuickAdapter.OnItemClickListener{ _, _, _ ->
 
         //开启声音和震动提示
         mSoundPoolUtils.startVideoAndVibrator(R.raw.ring,1000)

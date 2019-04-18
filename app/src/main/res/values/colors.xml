@@ -18,7 +18,7 @@
     <color name="grayLine">#CCCCCC</color>
     <color name="disabledColor">#81dfdbdb</color>
 
-    <color name="arcColor">#81dfdbdb</color>
+    <color name="arcColor">#d1dfdbdb</color>
     <color name="progressColor">#d42298ec</color>
     <color name="textColor">#ffffff</color>
 

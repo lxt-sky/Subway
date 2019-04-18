@@ -13,8 +13,7 @@ import androidx.room.PrimaryKey
 class DriveRecord {
     //ID自增长
     @PrimaryKey(autoGenerate = true)
-    @ColumnInfo(name ="recordId")
-    var id:Int = 0
+    var recordId:Int = 0
 
     var driveName:String = ""
 

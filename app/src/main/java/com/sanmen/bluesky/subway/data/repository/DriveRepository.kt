@@ -15,26 +15,35 @@ class DriveRepository(
 ) {
 
     fun insertDriveRecord(record: DriveRecord){
-        appExecutors.diskIO().execute {
-            driveDao.insert(record)
+        synchronized(DriveRepository){
+            appExecutors.diskIO().execute {
+                driveDao.insert(record)
+            }
         }
+
     }
 
     fun insertDriveRecordList(list: List<DriveRecord>){
-        appExecutors.diskIO().execute {
-            driveDao.insertAll(list)
+        synchronized(DriveRepository){
+            appExecutors.diskIO().execute {
+                driveDao.insertAll(list)
+            }
         }
+
     }
 
     fun updateDriveRecord(record: DriveRecord){
-        appExecutors.diskIO().execute {
-            driveDao.update(record)
+        synchronized(DriveRepository){
+            appExecutors.diskIO().execute {
+                driveDao.update(record)
+            }
         }
+
     }
 
     fun deleteAllDriveRecord(list: List<DriveRecord>) = driveDao.deleteAll(list)
 
-    fun getDriveRecordList()=driveDao.getAllRecord()
+    fun getDriveRecordList()= synchronized(DriveRepository){driveDao.getAllRecord()}
 
     fun getLatestRecord() = driveDao.getLatestRecord()
 
