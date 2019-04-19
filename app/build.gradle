@@ -16,7 +16,7 @@ android {
     defaultConfig {
         applicationId "com.sanmen.bluesky.subway"
         minSdkVersion 22
-        targetSdkVersion 22
+        targetSdkVersion 24
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

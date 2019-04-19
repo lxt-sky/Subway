@@ -7,7 +7,9 @@ import android.content.IntentFilter
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
+import android.os.PowerManager
 import android.view.View
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.chad.library.adapter.base.BaseQuickAdapter
@@ -33,6 +35,7 @@ import java.util.*
 class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
 
     private var isAlarming: Boolean=false
+
     private var alarmData = mutableListOf<AlarmInfo>()
 
     private var isSound:Boolean = true
@@ -40,6 +43,8 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
     private var delayTime:Float = 0f//延迟时间值0-10
 
     private var mRecordId = -1
+
+    private var driveDir = -1
 
     private var lightThreshold:Int=0
 
@@ -87,6 +92,9 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        //保持屏幕常亮
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         sharedPref.run {
             isSound = this.getBoolean(Constant.SOUND_STATE,false)
             delayTime = this.getFloat(Constant.DELAY_TIME,0f)
@@ -100,7 +108,10 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
     override fun initData() {
         super.initData()
         //获取当前行车记录ID
-        mRecordId = intent.getIntExtra(Constant.RECORD_ID,-1)
+        intent.run {
+            mRecordId = this.getIntExtra(Constant.RECORD_ID,-1)
+            driveDir = this.getIntExtra(Constant.DRIVE_DIRECTION,-1)
+        }
 
         alarmRepository = AlarmRepository.getInstance(alarmDao,appExecutors)
 
@@ -229,6 +240,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         val alarmInfo=AlarmInfo()
 
         alarmInfo.run {
+            this.direction = driveDir
             this.alarmText="信号灯告警，请注意!"
             this.alarmTime = TimeUtil.getTimeString(Date())
             this.recordId = mRecordId
@@ -252,7 +264,19 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
      * 光照数据处理
      */
     private fun toParseCommand(lightData: String?) {
-        var lightValue = lightData!!.toInt()
+
+        var lightValue = 0
+        if (lightData != null) {
+            if (lightData.indexOf(',')!=-1){//双灯
+                var array = lightData.split(',')
+                if (array.isNotEmpty()){
+                    var temp = array[0].toInt()
+                    lightValue =if (temp<array[1].toInt()) temp else array[1].toInt()
+                }
+            }else{//单灯
+                lightValue = lightData.toInt()
+            }
+        }
         if (!isAlarming&& lightValue>lightThreshold*unitValue){//光照阈值*单元值,例如:4*5000=20000
             isAlarming = true
             addOneAlarmInfo()

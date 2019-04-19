@@ -15,6 +15,7 @@ class AlarmAdapter(data:MutableList<AlarmInfo>):
     override fun convert(helper: BaseViewHolder?, item: AlarmInfo?) {
         item?:return
         helper?:return
+        helper.setText(R.id.tvTitle,if (item.direction==0) "上行-报警信息" else "下行-报警信息")
         helper.setText(R.id.tvAlarmTime,item.alarmTime)
             .setText(R.id.tvAlarmText,item.alarmText)
 

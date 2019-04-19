@@ -18,6 +18,7 @@ class AlarmInfo{
     @ColumnInfo(name = "alarmId")
     var id:Int=0
 
+    var direction:Int = 0
 
     var recordId:Int = 0
 

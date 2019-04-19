@@ -104,7 +104,7 @@ class BluetoothService : Service() {
             isConnected=true
             //连接中
             broadcastUpdate(ACTION_CONNECTING)
-            if (isConnected){
+                if (isConnected){
                 try {
                     //执行连接
                     bluetoothSocket.connect()
