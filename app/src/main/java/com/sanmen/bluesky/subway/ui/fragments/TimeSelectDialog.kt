@@ -21,7 +21,7 @@ class TimeSelectDialog : DialogFragment(), KBubbleSeekBar.OnProgressChangedListe
 
 
 
-    private var delayTime = 0
+    private var delayTime:Float = 0f
 
     private var listener: OnDialogCloseListener? = null
 
@@ -36,7 +36,7 @@ class TimeSelectDialog : DialogFragment(), KBubbleSeekBar.OnProgressChangedListe
 
 
         if (arguments!=null){
-            this.delayTime = arguments!!.getInt(Constant.DELAY_TIME,0)
+            this.delayTime = arguments!!.getFloat(Constant.DELAY_TIME,0f)
         }
         val builder = AlertDialog.Builder(activity)
         val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_time_select,null)
@@ -50,7 +50,7 @@ class TimeSelectDialog : DialogFragment(), KBubbleSeekBar.OnProgressChangedListe
         val seekBar =dialogView.findViewById<KBubbleSeekBar>(R.id.seekBar)
         seekBar.run {
             this.onProgressChangedListener = this@TimeSelectDialog
-            this.setProgress(delayTime.toFloat())
+            this.setProgress(delayTime)
         }
 
         return dialog
@@ -66,7 +66,7 @@ class TimeSelectDialog : DialogFragment(), KBubbleSeekBar.OnProgressChangedListe
 
 
     public interface OnDialogCloseListener{
-        fun onClick(progress: Int)
+        fun onClick(progress: Float)
     }
 
     override fun onProgressChanged(
@@ -75,7 +75,7 @@ class TimeSelectDialog : DialogFragment(), KBubbleSeekBar.OnProgressChangedListe
         progressFloat: Float,
         fromUser: Boolean
     ) {
-        this.delayTime = progress
+        this.delayTime = progressFloat
 
 
     }

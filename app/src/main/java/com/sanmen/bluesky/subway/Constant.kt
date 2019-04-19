@@ -94,6 +94,10 @@ object Constant {
      */
     const val LIGHT_INTENSITY="lightIntensity"
     /**
+     * 单元值
+     */
+    const val UNIT_VALUE = "unitValue"
+    /**
      * 声音状态
      */
     const val SOUND_STATE = "SOUND_STATE"
@@ -101,6 +105,10 @@ object Constant {
      * 延迟时间
      */
     const val DELAY_TIME = "DELAY_TIME"
+    /**
+     * 光照数据
+     */
+    const val LIGHT_DATA = "LIGHT_DATA"
 
     /**
      * 提示文本

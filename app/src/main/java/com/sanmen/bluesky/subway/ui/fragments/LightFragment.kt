@@ -1,15 +1,19 @@
 package com.sanmen.bluesky.subway.ui.fragments
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import com.sanmen.bluesky.subway.Constant
 
 import com.sanmen.bluesky.subway.widget.KBubbleSeekBar
 import kotlinx.android.synthetic.main.fragment_light.*
 import com.sanmen.bluesky.subway.Constant.LIGHT_INTENSITY
 import com.sanmen.bluesky.subway.Constant.LIGHT_THRESHOLD
+import com.sanmen.bluesky.subway.Constant.UNIT_VALUE
 import com.sanmen.bluesky.subway.R
 
 
@@ -22,14 +26,24 @@ class LightFragment : Fragment() {
     /**
      * 光照临界值hi
      */
-    private var light = 0//0-100
+    private var light = 0//0-10
+
+    /**
+     * 单元值
+     */
+    private var unitValue = 10000
+
+
+
+    private val sharedPref: SharedPreferences by lazy {
+        activity!!.getSharedPreferences("sub_config", Context.MODE_PRIVATE)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        arguments?.let {
-            light = it.getInt(LIGHT_THRESHOLD,0)
-            lightIntensity = it.getInt(LIGHT_INTENSITY,0)
+        sharedPref.run {
+            light = this.getInt(LIGHT_THRESHOLD,4)
         }
     }
 
@@ -50,6 +64,7 @@ class LightFragment : Fragment() {
 
             this.onProgressChangedListener = progressChangeListener
         }
+        value.text = "(${light*unitValue})"
     }
 
     private val progressChangeListener = object :
@@ -61,6 +76,7 @@ class LightFragment : Fragment() {
             fromUser: Boolean
         ) {
             light = progress
+            value.text = "(${light*unitValue})"
 
         }
 
@@ -83,10 +99,10 @@ class LightFragment : Fragment() {
         super.onPause()
 
         //保存数据
-
-    }
-
-    companion object {
-
+         sharedPref.edit().apply {
+             this.putInt(LIGHT_THRESHOLD,light)
+             this.putInt(UNIT_VALUE,unitValue)
+             this.apply()
+         }
     }
 }

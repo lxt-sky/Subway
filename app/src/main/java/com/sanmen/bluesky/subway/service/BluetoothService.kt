@@ -20,6 +20,7 @@ import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_FAILED
 import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_SUCCESS
 import com.sanmen.bluesky.subway.Constant.BOND_FAILED
 import com.sanmen.bluesky.subway.Constant.BOND_SUCCESS
+import com.sanmen.bluesky.subway.Constant.LIGHT_DATA
 import java.io.IOException
 import java.io.InputStream
 import kotlin.concurrent.thread
@@ -29,18 +30,12 @@ import kotlin.concurrent.thread
  */
 private const val MY_UUID = "00001101-0000-1000-8000-00805F9B34FB"
 
+private const val TAG = ".BluetoothService"
 
-/**
- * An [IntentService] subclass for handling asynchronous task requests in
- * a service on a separate handler thread.
- * TODO: Customize class - update intent actions, extra parameters and static
- * helper methods.
- */
+
 class BluetoothService : Service() {
 
     private var isConnected: Boolean = false
-
-    private val TAG = ".BluetoothService"
 
     private var mTargetDevice: BluetoothDevice? = null
 
@@ -130,17 +125,25 @@ class BluetoothService : Service() {
             //连接成功
             broadcastUpdate(ACTION_CONNECTED)
 
-            var buffer = ByteArray(1024)
+            val intent = Intent(ACTION_READ_DATA_SUCCESS)
+            var i=0
+            val data = ByteArray(1024)
             while (isConnected){
                 try {
-                    var bytes = inputStream.read(buffer)
+                    val byte = inputStream.read().toByte()
+                    if (byte== '\r'.toByte()){//13,10---\r\n
 
-                    if(bytes>0){
-                        val data = ByteArray(bytes)
-                        System.arraycopy(buffer, 0, data, 0, bytes)
-                        val intent = Intent(ACTION_READ_DATA_SUCCESS)
-                        intent.putExtra("DATA", String(data))
+                        val reData = ByteArray(i)
+                        System.arraycopy(data, 0, reData, 0, i)
+
+                        intent.putExtra(LIGHT_DATA, String(reData))
                         sendBroadcast(intent)
+                        i=0
+                    }
+                    else if (byte=='\n'.toByte()){
+                        continue
+                    }else{
+                        data[i++]=byte
                     }
                 }catch (e:IOException){
                     broadcastUpdate(ACTION_READ_DATA_FAILED)

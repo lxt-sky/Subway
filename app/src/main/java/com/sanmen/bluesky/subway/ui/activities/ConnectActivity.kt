@@ -15,8 +15,6 @@ import android.util.Log
 
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
-import androidx.core.app.ActivityCompat.startActivityForResult
-import androidx.core.content.ContextCompat.startActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.gyf.barlibrary.ImmersionBar
@@ -47,12 +45,9 @@ import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_STARTED
 import com.sanmen.bluesky.subway.Constant.DEVICE_NOT_SUPPORT_BLUETOOTH
 import com.sanmen.bluesky.subway.Constant.NOT_LOCATION_PERMISSION
 import com.sanmen.bluesky.subway.R
-import com.sanmen.bluesky.subway.ui.activities.ConnectActivity.Companion.BLUETOOTH_DISCOVERABLE_DURATION
-import com.sanmen.bluesky.subway.ui.activities.ConnectActivity.Companion.DRIVE_INFO
-import com.sanmen.bluesky.subway.ui.activities.ConnectActivity.Companion.REQUEST_CODE
+
 import com.sanmen.bluesky.subway.utils.AppExecutors
 import java.util.*
-import kotlin.concurrent.thread
 
 
 class ConnectActivity : BaseActivity() {
@@ -220,7 +215,7 @@ class ConnectActivity : BaseActivity() {
             this.nextText("未连接",0)
             this.setOnClickListener {
                 if (linkState!=2) return@setOnClickListener
-                val intent = Intent(this@ConnectActivity,AlarmActivity::class.java)
+                val intent = Intent(this@ConnectActivity, AlarmActivity::class.java)
 
                 if (recordList.isNotEmpty()){
                     val record = recordList.last()
@@ -245,6 +240,7 @@ class ConnectActivity : BaseActivity() {
         sendBroadcast(Intent(ACTION_SEARCH_STARTED))
         mBluetoothAdapter.startDiscovery()
 
+        isHaveTarget = false
         mHandler.postDelayed({
             mBluetoothAdapter.cancelDiscovery()
             sendBroadcast(Intent(ACTION_SEARCH_FAILED))
@@ -380,16 +376,19 @@ class ConnectActivity : BaseActivity() {
                     loadView.nextText("搜索中",1)
                 }
                 ACTION_SEARCH_FAILED->{//搜索失败
-                    linkState = 0
-                    isHaveTarget=false
-                    loadView.nextText("搜索失败",1)
-                    loadView.stopSpinning()
+                    if (!isHaveTarget){
+                        linkState = 0
+                        loadView.nextText("搜索失败",1)
+                        loadView.stopSpinning()
+                    }
+
                 }
 
                 BluetoothDevice.ACTION_FOUND->{//发现设备
 
                     val device:BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                     if (device?.name==mTargetDeviceName){
+                        isHaveTarget = true
                         mTargetDevice = device
                         //立即取消搜索
                         mBluetoothAdapter.cancelDiscovery()
@@ -429,7 +428,7 @@ class ConnectActivity : BaseActivity() {
                     loadView.stopSpinning()
 
                 }
-                ACTION_CONNECT_FAILED->{//连接断开
+                ACTION_CONNECT_FAILED->{//失败
                     linkState = 0
                     btnLinked.text = "连接"
                     btnLinked.setBackgroundResource(R.drawable.shape_btn_1)
@@ -439,11 +438,6 @@ class ConnectActivity : BaseActivity() {
 
                 }
 
-                ACTION_READ_DATA_SUCCESS->{//读取数据成功
-                    val lightData = intent.getStringExtra("DATA")
-                    toParseCommand(lightData)
-//                    Toast.makeText(this@ConnectActivity, "接收指令成功", Toast.LENGTH_SHORT).show()
-                }
                 ACTION_READ_DATA_FAILED->{//读取数据失败
 //                    Toast.makeText(this@ConnectActivity, "接收指令失败", Toast.LENGTH_SHORT).show()
                 }

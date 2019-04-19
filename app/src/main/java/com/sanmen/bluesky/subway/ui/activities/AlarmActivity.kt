@@ -1,14 +1,21 @@
 package com.sanmen.bluesky.subway.ui.activities
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioManager
 import android.os.Bundle
+import android.os.Handler
 import android.view.View
+import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.gyf.barlibrary.ImmersionBar
 import com.sanmen.bluesky.subway.Constant
+import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_FAILED
+import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_SUCCESS
+import com.sanmen.bluesky.subway.Constant.LIGHT_DATA
 import com.sanmen.bluesky.subway.R
 import com.sanmen.bluesky.subway.adapters.AlarmAdapter
 import com.sanmen.bluesky.subway.data.bean.AlarmInfo
@@ -25,13 +32,22 @@ import java.util.*
 
 class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
 
+    private var isAlarming: Boolean=false
     private var alarmData = mutableListOf<AlarmInfo>()
 
     private var isSound:Boolean = true
 
-    private var delayTime = 0//延迟时间值0-100
+    private var delayTime:Float = 0f//延迟时间值0-10
 
     private var mRecordId = -1
+
+    private var lightThreshold:Int=0
+
+    private var unitValue:Int = 0
+
+    private val mHandler: Handler by lazy {
+        Handler()
+    }
 
     private val appExecutors: AppExecutors by lazy {
         AppExecutors()
@@ -73,7 +89,9 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
 
         sharedPref.run {
             isSound = this.getBoolean(Constant.SOUND_STATE,false)
-            delayTime = this.getInt(Constant.DELAY_TIME,0)
+            delayTime = this.getFloat(Constant.DELAY_TIME,0f)
+            lightThreshold = this.getInt(Constant.LIGHT_THRESHOLD,4)
+            unitValue = this.getInt(Constant.UNIT_VALUE,5000)
         }
 
         ivSound.isSelected = isSound
@@ -86,6 +104,11 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
 
         alarmRepository = AlarmRepository.getInstance(alarmDao,appExecutors)
 
+        val intentFilter =IntentFilter().apply {
+            this.addAction(ACTION_READ_DATA_SUCCESS)
+        }
+
+        registerReceiver(mBroadcastReceiver,intentFilter)
     }
 
     /**
@@ -112,11 +135,10 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         btnClear.setOnClickListener(onClickListener)
         ivSound.setOnClickListener(onClickListener)
         ivAdjust.setOnClickListener(onClickListener)
-        btnAddData.setOnClickListener(onClickListener)
 
         toolBar.inflateMenu(R.menu.menu)
         toolBar.setOnMenuItemClickListener {
-            startActivity(Intent(this,SettingActivity::class.java))
+            startActivity(Intent(this, SettingActivity::class.java))
             return@setOnMenuItemClickListener false
         }
         toolBar.setNavigationOnClickListener {
@@ -156,26 +178,10 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
 
                 dialog.run {
                     val bundle = Bundle()
-                    bundle.putInt(Constant.DELAY_TIME,delayTime)
+                    bundle.putFloat(Constant.DELAY_TIME,delayTime)
                     this.arguments= bundle
                     this.show(supportFragmentManager,"timeSelectDialog")
                 }
-            }
-            R.id.btnAddData->{
-                //测试数据添加
-                val alarmInfo=AlarmInfo()
-
-                alarmInfo.run {
-                    this.alarmText="请确认出站信号"
-                    this.alarmTime = TimeUtil.getTimeString(Date())
-                    this.recordId = mRecordId
-                }
-
-                alarmRepository.insertAlarmItem(alarmInfo)
-
-                alarmData.add(alarmInfo)
-                alarmAdapter.notifyDataSetChanged()
-                rvAlarmList.scrollToPosition(alarmData.size-1)
             }
         }
     }
@@ -186,7 +192,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         mSoundPoolUtils.startVideoAndVibrator(R.raw.ring,1000)
     }
 
-    override fun onClick(progress: Int) {
+    override fun onClick(progress: Float) {
         this.delayTime = progress
 
     }
@@ -196,9 +202,62 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         mSoundPoolUtils.release()
         sharedPref.edit().apply {
             this.putBoolean(Constant.SOUND_STATE,isSound)
-            this.putInt(Constant.DELAY_TIME,delayTime)
+            this.putFloat(Constant.DELAY_TIME,delayTime)
             //异步提交配置信息
             this.apply()
+        }
+    }
+
+    private val mBroadcastReceiver = object : BroadcastReceiver(){
+        override fun onReceive(context: Context?, intent: Intent?) {
+
+            when(intent!!.action){
+                ACTION_READ_DATA_SUCCESS ->{//读取数据成功
+                    val lightData = intent.getStringExtra(LIGHT_DATA)
+                    toParseCommand(lightData)
+                }
+                ACTION_READ_DATA_FAILED->{
+                    Toast.makeText(this@AlarmActivity,"读取数据失败！",Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+    }
+
+
+    private fun addOneAlarmInfo(){
+        val alarmInfo=AlarmInfo()
+
+        alarmInfo.run {
+            this.alarmText="信号灯告警，请注意!"
+            this.alarmTime = TimeUtil.getTimeString(Date())
+            this.recordId = mRecordId
+        }
+
+        alarmRepository.insertAlarmItem(alarmInfo)
+
+        alarmData.add(alarmInfo)
+        alarmAdapter.notifyDataSetChanged()
+        rvAlarmList.scrollToPosition(alarmData.size-1)
+        //开启振动和声音
+
+        //延迟执行
+        mHandler.postDelayed({
+            mSoundPoolUtils.startVideoAndVibrator(R.raw.ring,1000)
+        },(1000*delayTime).toLong())
+
+    }
+
+    /**
+     * 光照数据处理
+     */
+    private fun toParseCommand(lightData: String?) {
+        var lightValue = lightData!!.toInt()
+        if (!isAlarming&& lightValue>lightThreshold*unitValue){//光照阈值*单元值,例如:4*5000=20000
+            isAlarming = true
+            addOneAlarmInfo()
+        }else if (isAlarming&&lightValue <=lightThreshold*unitValue){
+            isAlarming = false
         }
     }
 

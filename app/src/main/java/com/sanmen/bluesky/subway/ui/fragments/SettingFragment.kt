@@ -143,10 +143,7 @@ class SettingFragment : Fragment() {
             }
             R.id.llLight->{
                 //传递数据
-                val bundle = Bundle()
-                bundle.putInt("lightIntensity",0)//光照强度
-                bundle.putInt("lightThreshold",0)//光照临界值
-                NavHostFragment.findNavController(this).navigate(R.id.action_settingFragment_to_lightFragment,bundle)
+                NavHostFragment.findNavController(this).navigate(R.id.action_settingFragment_to_lightFragment)
             }
             R.id.llDataClear->{
                 DialogUtil.getConfirmDialog(
