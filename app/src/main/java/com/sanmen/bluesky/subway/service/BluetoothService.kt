@@ -24,6 +24,10 @@ import com.sanmen.bluesky.subway.Constant.LIGHT_DATA
 import java.io.IOException
 import java.io.InputStream
 import kotlin.concurrent.thread
+import android.bluetooth.BluetoothAdapter
+import android.os.Build
+import com.inuker.bluetooth.library.utils.BluetoothUtils.sendBroadcast
+
 
 /**
  * 蓝牙串口服务UUID--SPP
@@ -35,9 +39,12 @@ private const val TAG = ".BluetoothService"
 
 class BluetoothService : Service() {
 
+    private var mBluetoothGatt: BluetoothGatt? = null
     private var isConnected: Boolean = false
 
     private var mTargetDevice: BluetoothDevice? = null
+
+    private var deviceList = mutableListOf<BluetoothDevice>()
 
     private lateinit var connectThread:Thread
 
@@ -53,39 +60,127 @@ class BluetoothService : Service() {
         BluetoothAdapter.getDefaultAdapter()
     }
 
+
+    override fun onCreate() {
+        super.onCreate()
+        mClient.registerBluetoothBondListener(mBluetoothBondListener)
+    }
+    /**
+     * 是否支持蓝牙
+     */
+    fun isBluetoothSupported():Boolean{
+        if (mBluetoothAdapter==null){
+            return false
+        }
+        return true
+    }
+
     /**
      * 打开蓝牙
      */
     fun openBluetooth(){
-        mClient.openBluetooth()
+        if (!mBluetoothAdapter.isEnabled){
+            mBluetoothAdapter.enable()
+        }
     }
 
     /**
      * 关闭蓝牙
      */
     fun closeBluetooth(){
+
+        if (mBluetoothAdapter==null) return
+
         if (mTargetDevice==null) return
-        mClient.disconnect(mTargetDevice!!.address)
-        mClient.closeBluetooth()
+        mBluetoothAdapter.disable()
     }
 
-    override fun onCreate() {
-        super.onCreate()
-        mClient.registerBluetoothBondListener(mBluetoothBondListener)
+
+    fun connectDevice(devices:List<BluetoothDevice>){
+//        for (item in devices){
+//            deviceList.add(item)
+//            connectDevice(item)
+//        }
+
     }
 
     /**
      * 连接目标设备
+     * @param address 设备地址
+     * @param tag 自定义标识
      */
-    fun connectDevice(address:String){
-        //获取目标设备
-        mTargetDevice = mTargetDevice?:mBluetoothAdapter.getRemoteDevice(address)
-        //未配对设备发起配对
-        if (mTargetDevice!!.bondState==BluetoothDevice.BOND_NONE){
-            mTargetDevice!!.createBond()
+    fun connectDevice(address: String){
+
+        if (mBluetoothGatt!=null){
+            mBluetoothGatt?.close()
+            mBluetoothGatt = null
+        }
+
+
+        val remoteDevice = mBluetoothAdapter.getRemoteDevice(address)
+        deviceList.add(remoteDevice)
+        mTargetDevice = remoteDevice
+
+        mBluetoothGatt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            remoteDevice.connectGatt(this,false,blueGattCallback,BluetoothDevice.TRANSPORT_LE)
         }else{
-            //配对成功直接连接
-            connect()
+            remoteDevice.connectGatt(this,false,blueGattCallback)
+        }
+
+
+//        //获取目标设备
+//        mTargetDevice = mTargetDevice?:mBluetoothAdapter.getRemoteDevice(address)
+//
+//        //未配对设备发起配对
+//        if (mTargetDevice!!.bondState==BluetoothDevice.BOND_NONE){
+//            mTargetDevice!!.createBond()
+//        }else{
+//            //配对成功直接连接
+//            connect()
+//        }
+    }
+
+    private val blueGattCallback: BluetoothGattCallback? = object : BluetoothGattCallback() {
+        /**
+         * 连接状态变化
+         */
+        override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
+            super.onConnectionStateChange(gatt, status, newState)
+
+            if (status==BluetoothGatt.GATT_SUCCESS){
+
+            }else{
+
+                mBluetoothGatt?.disconnect()
+
+                connectDevice(mTargetDevice!!.address)
+            }
+
+        }
+
+        /**
+         * 发现服务
+         */
+        override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
+            super.onServicesDiscovered(gatt, status)
+        }
+
+        /**
+         * 读操作回调
+         */
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt?,
+            characteristic: BluetoothGattCharacteristic?,
+            status: Int
+        ) {
+            super.onCharacteristicRead(gatt, characteristic, status)
+        }
+
+        /**
+         * 数据返回回调
+         */
+        override fun onCharacteristicChanged(gatt: BluetoothGatt?, characteristic: BluetoothGattCharacteristic?) {
+            super.onCharacteristicChanged(gatt, characteristic)
         }
     }
 

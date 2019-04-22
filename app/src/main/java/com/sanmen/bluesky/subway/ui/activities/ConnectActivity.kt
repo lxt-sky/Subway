@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothServerSocket
 
 import android.content.*
 import android.os.Bundle
@@ -13,9 +14,13 @@ import android.os.IBinder
 import android.util.Log
 
 import android.widget.Toast
+import androidx.core.app.ActivityCompat.startActivityForResult
+import androidx.core.content.ContextCompat.startActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.gyf.barlibrary.ImmersionBar
+import com.inuker.bluetooth.library.utils.BluetoothUtils.sendBroadcast
+import com.inuker.bluetooth.library.utils.BluetoothUtils.unregisterReceiver
 import com.s.DriveAdapter
 import com.sanmen.bluesky.subway.Constant
 
@@ -42,9 +47,12 @@ import com.sanmen.bluesky.subway.Constant.NOT_LOCATION_PERMISSION
 import com.sanmen.bluesky.subway.R
 import com.sanmen.bluesky.subway.helper.PermissionHelper
 import com.sanmen.bluesky.subway.helper.PermissionInterface
+import com.sanmen.bluesky.subway.ui.activities.ConnectActivity.Companion.DRIVE_INFO
+import com.sanmen.bluesky.subway.ui.activities.ConnectActivity.Companion.REQUEST_CODE
 
 import com.sanmen.bluesky.subway.utils.AppExecutors
 import java.util.*
+import kotlin.concurrent.thread
 
 
 class ConnectActivity : BaseActivity(),PermissionInterface {
@@ -62,7 +70,9 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
 
     private val requestCode = 10000
 
-    private val mTargetDeviceName = "Lsensor"
+    private val alarmDeviceName = "Lsensor"
+
+    private val platformDeviceName = "Lsensor-1"
 
     private lateinit var mTargetDevice: BluetoothDevice
 
@@ -77,6 +87,8 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
     private var isHaveTarget: Boolean = false
 
     private var mBluetoothService: BluetoothService? =null
+
+    private var deviceList = mutableListOf<BluetoothDevice>()
 
     private lateinit var repository:DriveRepository
 
@@ -141,6 +153,15 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
 
         //申请权限
         helper.requestPermissions()
+
+//        if (mBluetoothService!!.isBluetoothSupported()){
+//            btnLinked.isEnabled =true
+//            mBluetoothService!!.openBluetooth()
+//        }else{
+//            //本设备不支持蓝牙
+//            btnLinked.isEnabled =false
+//            Toast.makeText(this,DEVICE_NOT_SUPPORT_BLUETOOTH,Toast.LENGTH_SHORT).show()
+//        }
 
         if (mBluetoothAdapter!=null){
             btnLinked.isEnabled =true
@@ -279,6 +300,9 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
         getLatestData()
     }
 
+    /**
+     * 行车数据更新
+     */
     private fun getLatestData() {
 
         appExecutors.diskIO().execute {
@@ -376,23 +400,14 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
                 BluetoothDevice.ACTION_FOUND->{//发现设备
 
                     val device:BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-                    if (device?.name==mTargetDeviceName){
-                        isHaveTarget = true
-                        mTargetDevice = device
-                        //立即取消搜索
-                        mBluetoothAdapter.cancelDiscovery()
-                        //开始连接
-                        sendBroadcast(Intent(ACTION_CONNECTING))
-                        //发起配对，配对成功连接
-                        mBluetoothService!!.connectDevice(mTargetDevice.address)
-                    }
+                    addDevice2List(device)
                 }
 
                 BluetoothAdapter.ACTION_DISCOVERY_FINISHED->{//搜索结束
 
                 }
                 ACTION_CONNECTING->{
-                    Toast.makeText(this@ConnectActivity,"找到目标设备：$mTargetDeviceName",Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ConnectActivity,"找到目标设备：$alarmDeviceName",Toast.LENGTH_SHORT).show()
                     loadView.nextText("连接中",1)
                 }
 
@@ -426,6 +441,31 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
 
                 }
             }
+        }
+    }
+
+    /**
+     * 添加蓝牙设备至列表
+     */
+    private fun addDevice2List(device: BluetoothDevice?) {
+
+        var searchAlarmDevice = false
+        if (!searchAlarmDevice&&device?.name==alarmDeviceName){//报警灯蓝牙
+
+            isHaveTarget = true
+            mBluetoothService!!.connectDevice(device.address)
+
+            searchAlarmDevice = true
+        }
+        if (searchAlarmDevice&&device?.name==platformDeviceName){//站台蓝牙
+//            isHaveTarget = true
+            deviceList.add(device)
+            //立即取消搜索
+            mBluetoothAdapter.cancelDiscovery()
+            //开始连接
+            sendBroadcast(Intent(ACTION_CONNECTING))
+            //发起配对，配对成功连接
+//            mBluetoothService!!.connectDevice(mTargetDevice.address)
         }
     }
 
