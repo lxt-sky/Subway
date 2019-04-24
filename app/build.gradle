@@ -48,6 +48,9 @@ dependencies {
     // use -ktx for Kotlin
     //BluetoothKit
     implementation 'com.inuker.bluetooth:library:1.4.0'
+
+    implementation 'org.greenrobot:eventbus:3.1.1'
+
     // optional - Test helpers
     androidTestImplementation "android.arch.navigation:navigation-testing:$nav_version"
     testImplementation 'junit:junit:4.12'

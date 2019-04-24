@@ -21,6 +21,7 @@ import com.sanmen.bluesky.subway.Constant.LIGHT_DATA
 import com.sanmen.bluesky.subway.R
 import com.sanmen.bluesky.subway.adapters.AlarmAdapter
 import com.sanmen.bluesky.subway.data.bean.AlarmInfo
+import com.sanmen.bluesky.subway.data.bean.NotifyMessage
 import com.sanmen.bluesky.subway.data.dao.AlarmDao
 import com.sanmen.bluesky.subway.data.database.DriveDatabase
 import com.sanmen.bluesky.subway.data.repository.AlarmRepository
@@ -30,6 +31,10 @@ import com.sanmen.bluesky.subway.utils.AppExecutors
 import com.sanmen.bluesky.subway.utils.SoundPoolUtils
 import com.sanmen.bluesky.subway.utils.TimeUtil
 import kotlinx.android.synthetic.main.activity_alarm.*
+import org.apache.poi.ss.formula.functions.Even
+import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
+import org.greenrobot.eventbus.ThreadMode
 import java.util.*
 
 class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
@@ -115,11 +120,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
 
         alarmRepository = AlarmRepository.getInstance(alarmDao,appExecutors)
 
-        val intentFilter =IntentFilter().apply {
-            this.addAction(ACTION_READ_DATA_SUCCESS)
-        }
-
-        registerReceiver(mBroadcastReceiver,intentFilter)
+        EventBus.getDefault().register(this)
     }
 
     /**
@@ -219,23 +220,23 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         }
     }
 
-    private val mBroadcastReceiver = object : BroadcastReceiver(){
-        override fun onReceive(context: Context?, intent: Intent?) {
-
-            when(intent!!.action){
-                ACTION_READ_DATA_SUCCESS ->{//读取数据成功
-                    val lightData = intent.getStringExtra(LIGHT_DATA)
-                    toParseCommand(lightData)
-                }
-                ACTION_READ_DATA_FAILED->{
-                    Toast.makeText(this@AlarmActivity,"读取数据失败！",Toast.LENGTH_LONG).show()
-                }
+    //EventBus事件接收
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onEventMainThread(msg: NotifyMessage){
+        when(msg.code){
+            ACTION_READ_DATA_SUCCESS ->{//读取数据成功
+                val lightData = msg.getData<String>()
+                toParseCommand(lightData)
+            }
+            ACTION_READ_DATA_FAILED->{
+                Toast.makeText(this@AlarmActivity,"读取数据失败！",Toast.LENGTH_LONG).show()
             }
         }
-
     }
 
-
+    /**
+     * 添加报警信息
+     */
     private fun addOneAlarmInfo(){
         val alarmInfo=AlarmInfo()
 
@@ -283,6 +284,12 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         }else if (isAlarming&&lightValue <=lightThreshold*unitValue){
             isAlarming = false
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        EventBus.getDefault().unregister(this)
     }
 
 }

@@ -23,11 +23,13 @@ import java.util.concurrent.Executors
 
 open class AppExecutors(
     private val diskIO:Executor,
-    private val mainTread:Executor
+    private val mainTread:Executor,
+    private val connectThread:Executor
 ){
     constructor():this(
         Executors.newSingleThreadExecutor(),
-        MainThreadExecutor()
+        MainThreadExecutor(),
+        Executors.newFixedThreadPool(3)
     )
 
     fun diskIO():Executor{
@@ -36,6 +38,10 @@ open class AppExecutors(
 
     fun mainTread():Executor{
         return mainTread
+    }
+
+    fun connectThread():Executor{
+        return connectThread
     }
 
     private class MainThreadExecutor : Executor {

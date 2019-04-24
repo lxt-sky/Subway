@@ -11,16 +11,10 @@ import android.os.Bundle
 import android.os.Handler
 
 import android.os.IBinder
-import android.util.Log
-
 import android.widget.Toast
-import androidx.core.app.ActivityCompat.startActivityForResult
-import androidx.core.content.ContextCompat.startActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.gyf.barlibrary.ImmersionBar
-import com.inuker.bluetooth.library.utils.BluetoothUtils.sendBroadcast
-import com.inuker.bluetooth.library.utils.BluetoothUtils.unregisterReceiver
 import com.s.DriveAdapter
 import com.sanmen.bluesky.subway.Constant
 
@@ -36,23 +30,24 @@ import kotlinx.android.synthetic.main.activity_connect.*
 import com.sanmen.bluesky.subway.Constant.ACTION_CONNECTED
 import com.sanmen.bluesky.subway.Constant.ACTION_CONNECTING
 import com.sanmen.bluesky.subway.Constant.ACTION_CONNECT_FAILED
-import com.sanmen.bluesky.subway.Constant.ACTION_DATA_AVAILABLE
 import com.sanmen.bluesky.subway.Constant.ACTION_DISCONNECTED
 import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_FAILED
 import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_SUCCESS
+import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_ALARM_DEVICE_SUCCESS
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_FAILED
+import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_STARTED
 import com.sanmen.bluesky.subway.Constant.DEVICE_NOT_SUPPORT_BLUETOOTH
 import com.sanmen.bluesky.subway.Constant.NOT_LOCATION_PERMISSION
 import com.sanmen.bluesky.subway.R
+import com.sanmen.bluesky.subway.data.bean.NotifyMessage
 import com.sanmen.bluesky.subway.helper.PermissionHelper
 import com.sanmen.bluesky.subway.helper.PermissionInterface
-import com.sanmen.bluesky.subway.ui.activities.ConnectActivity.Companion.DRIVE_INFO
-import com.sanmen.bluesky.subway.ui.activities.ConnectActivity.Companion.REQUEST_CODE
-
 import com.sanmen.bluesky.subway.utils.AppExecutors
+import org.greenrobot.eventbus.EventBus
+import org.greenrobot.eventbus.Subscribe
+import org.greenrobot.eventbus.ThreadMode
 import java.util.*
-import kotlin.concurrent.thread
 
 
 class ConnectActivity : BaseActivity(),PermissionInterface {
@@ -64,17 +59,10 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
 
     companion object {
         const val DRIVE_INFO="报警信息"
-        const val BLUETOOTH_DISCOVERABLE_DURATION = 0
         const val REQUEST_CODE = 1
     }
 
     private val requestCode = 10000
-
-    private val alarmDeviceName = "Lsensor"
-
-    private val platformDeviceName = "Lsensor-1"
-
-    private lateinit var mTargetDevice: BluetoothDevice
 
     private var driveRecord = mutableListOf<DriveRecord>()
 
@@ -84,21 +72,13 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
      */
     private var bluetoothState: Boolean = false
 
-    private var isHaveTarget: Boolean = false
-
     private var mBluetoothService: BluetoothService? =null
-
-    private var deviceList = mutableListOf<BluetoothDevice>()
 
     private lateinit var repository:DriveRepository
 
     private lateinit var recordList:List<DriveRecord>
 
     private lateinit var helper: PermissionHelper
-
-    private val mHandler:Handler by lazy {
-        Handler()
-    }
 
     private val appExecutors: AppExecutors by lazy {
         AppExecutors()
@@ -139,18 +119,17 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        //注册广播
-        registerReceiver(mBroadcastReceiver,makeIntentFilter())
+        //绑定服务
+        val intent = Intent(this,BluetoothService::class.java)
+        bindService(intent,mServiceConnection,Context.BIND_AUTO_CREATE)
+
+        EventBus.getDefault().register(this)
     }
 
     override fun onStart() {
         super.onStart()
-
-        /**
-         * 获取最新数据
-         */
+        //获取最新数据
         getLatestData()
-
         //申请权限
         helper.requestPermissions()
 
@@ -180,9 +159,6 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
         super.initData()
 
         repository = DriveRepository.getInstance(driveDao,appExecutors)
-
-        val intent = Intent(this,BluetoothService::class.java)
-        bindService(intent,mServiceConnection,Context.BIND_AUTO_CREATE)
         helper =PermissionHelper(this,this)
 
     }
@@ -198,7 +174,7 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
             loadView.isShowSubText(false)
             if(linkState==0){
                 //搜索目标设备
-                searchTargetDevice()
+                mBluetoothService!!.searchTargetDevice()
                 loadView.startSpinning()
             }else if (linkState==2){
                 //断开连接
@@ -244,27 +220,6 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
                 }
             }
         }
-    }
-
-    /**
-     * 搜索目标设备
-     */
-    private fun searchTargetDevice() {
-
-        if (mBluetoothAdapter.isDiscovering) {
-            mBluetoothAdapter.cancelDiscovery()
-        }
-        //开始搜索
-        sendBroadcast(Intent(ACTION_SEARCH_STARTED))
-        mBluetoothAdapter.startDiscovery()
-
-        isHaveTarget = false
-        //10秒后取消搜索
-        mHandler.postDelayed({
-            mBluetoothAdapter.cancelDiscovery()
-            sendBroadcast(Intent(ACTION_SEARCH_FAILED))
-        },1000*8)
-
     }
 
     /**
@@ -330,22 +285,6 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
         }
     }
 
-    /**
-     * 过滤器
-     */
-    private fun makeIntentFilter():IntentFilter{
-
-        return IntentFilter().apply {
-            this.addAction(BluetoothDevice.ACTION_FOUND)//发现设备
-            this.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)//搜索结束
-            this.addAction(ACTION_SEARCH_STARTED)//开始搜索
-            this.addAction(ACTION_SEARCH_FAILED)//搜索失败
-            this.addAction(ACTION_CONNECTED)
-            this.addAction(ACTION_DISCONNECTED)
-            this.addAction(ACTION_CONNECT_FAILED)
-        }
-    }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
@@ -378,94 +317,72 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
         }
     }
 
-    /**
-     * 广播接收
-     */
-    private val mBroadcastReceiver = object : BroadcastReceiver(){
-        override fun onReceive(context: Context?, intent: Intent?) {
-            when(intent!!.action){
-
-                ACTION_SEARCH_STARTED->{//开始搜索设备
-                    linkState = 1
-                    loadView.nextText("搜索中",1)
-                }
-                ACTION_SEARCH_FAILED->{//搜索失败
-                    if (!isHaveTarget){
-                        linkState = 0
-                        loadView.nextText("搜索失败",1)
-                        loadView.stopSpinning()
-                    }
-                }
-
-                BluetoothDevice.ACTION_FOUND->{//发现设备
-
-                    val device:BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-                    addDevice2List(device)
-                }
-
-                BluetoothAdapter.ACTION_DISCOVERY_FINISHED->{//搜索结束
-
-                }
-                ACTION_CONNECTING->{
-                    Toast.makeText(this@ConnectActivity,"找到目标设备：$alarmDeviceName",Toast.LENGTH_SHORT).show()
-                    loadView.nextText("连接中",1)
-                }
-
-                ACTION_CONNECTED->{//连接成功
-                    linkState = 2
-                    btnLinked.text = "断开连接"
-                    btnLinked.setBackgroundResource(R.drawable.shape_btn_2)
-                    Toast.makeText(this@ConnectActivity,"连接成功",Toast.LENGTH_SHORT).show()
-
-                    loadView.nextText(if (driveDir==0) "上行" else "下行",1)
-                    loadView.isShowSubText(true)
-                    loadView.stopSpinning()
-                    //插入或更新一条行车记录
-                    insertDriveRecord()
-                }
-                ACTION_DISCONNECTED->{//连接断开
-                    linkState = 0
-                    btnLinked.text = "连接"
-                    btnLinked.setBackgroundResource(R.drawable.shape_btn_1)
-                    loadView.nextText("未连接",1)
-                    loadView.stopSpinning()
-
-                }
-                ACTION_CONNECT_FAILED->{//失败
-                    linkState = 0
-                    btnLinked.text = "连接"
-                    btnLinked.setBackgroundResource(R.drawable.shape_btn_1)
-                    loadView.nextText("连接失败",1)
-
-                    loadView.stopSpinning()
-
-                }
+    //EventBus事件接收
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onEventMainThread(msg: NotifyMessage){
+        when(msg.code){
+            ACTION_SEARCH_STARTED->{//开始搜索设备
+                linkState = 1
+                loadView.nextText("搜索中",1)
             }
-        }
-    }
 
-    /**
-     * 添加蓝牙设备至列表
-     */
-    private fun addDevice2List(device: BluetoothDevice?) {
+            ACTION_SEARCH_FAILED->{//搜索设备失败
+                linkState = 0
+                loadView.nextText("搜索失败",1)
+                loadView.stopSpinning()
+            }
 
-        var searchAlarmDevice = false
-        if (!searchAlarmDevice&&device?.name==alarmDeviceName){//报警灯蓝牙
+            ACTION_SEARCH_ALARM_DEVICE_SUCCESS->{//搜索到报警灯蓝牙
+                loadView.nextText("发现报警灯蓝牙",1)
 
-            isHaveTarget = true
-            mBluetoothService!!.connectDevice(device.address)
+            }
 
-            searchAlarmDevice = true
-        }
-        if (searchAlarmDevice&&device?.name==platformDeviceName){//站台蓝牙
-//            isHaveTarget = true
-            deviceList.add(device)
-            //立即取消搜索
-            mBluetoothAdapter.cancelDiscovery()
-            //开始连接
-            sendBroadcast(Intent(ACTION_CONNECTING))
-            //发起配对，配对成功连接
-//            mBluetoothService!!.connectDevice(mTargetDevice.address)
+            ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS->{//搜索到站台蓝牙
+                loadView.nextText("发现站台蓝牙",1)
+                //测试连接可用性
+                mBluetoothService!!.connectPlatformDevice()
+            }
+
+            ACTION_CONNECTING->{//设备连接中
+                loadView.nextText("连接中",1)
+            }
+
+            ACTION_CONNECTED->{//连接成功
+                linkState = 2
+                btnLinked.text = "断开连接"
+                btnLinked.setBackgroundResource(R.drawable.shape_btn_2)
+                Toast.makeText(this@ConnectActivity,"连接成功",Toast.LENGTH_SHORT).show()
+
+                loadView.nextText(if (driveDir==0) "上行" else "下行",1)
+                loadView.isShowSubText(true)
+                loadView.stopSpinning()
+                //插入或更新一条行车记录
+                insertDriveRecord()
+            }
+
+            ACTION_DISCONNECTED->{//设备连接断开
+                linkState = 0
+                btnLinked.text = "连接"
+                btnLinked.setBackgroundResource(R.drawable.shape_btn_1)
+                loadView.nextText("未连接",1)
+                loadView.stopSpinning()
+            }
+
+            ACTION_CONNECT_FAILED->{//设备连接失败
+                linkState = 0
+                btnLinked.text = "连接"
+                btnLinked.setBackgroundResource(R.drawable.shape_btn_1)
+                loadView.nextText("连接失败",1)
+                loadView.stopSpinning()
+            }
+
+            ACTION_READ_DATA_SUCCESS->{//读取数据成功
+
+            }
+
+            ACTION_READ_DATA_FAILED->{//读取数据失败
+
+            }
         }
     }
 
@@ -512,10 +429,8 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
     override fun onDestroy() {
         super.onDestroy()
 
-        mBluetoothAdapter.disable()
         mBluetoothService!!.disConnect()
-        //注销广播
-        unregisterReceiver(mBroadcastReceiver)
+        EventBus.getDefault().unregister(this)
         if (mBluetoothService!=null){
             unbindService(mServiceConnection)
             mBluetoothService = null

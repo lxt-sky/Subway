@@ -12,61 +12,73 @@ object Constant {
     /**
      * 搜索设备
      */
-    const val ACTION_SEARCH_STARTED = "com.sanmen.bluesky.subway.ACTION_SEARCH_STARTED"
+    const val ACTION_SEARCH_STARTED = 0x01
 
-    const val ACTION_SEARCH_FAILED = "com.sanmen.bluesky.subway.ACTION_SEARCH_FAILED"
+    /**
+     * 搜索设备失败
+     */
+    const val ACTION_SEARCH_FAILED = 0x02
 
     /**
      * 蓝牙配对失败
      */
-    const val BOND_FAILED = "com.sanmen.bluesky.subway.BOND_FAILED"
+    const val BOND_FAILED = 0x03
 
     /**
      * 蓝牙配对成功
      */
-    const val BOND_SUCCESS = "com.sanmen.bluesky.subway.BOND_SUCCESS"
+    const val BOND_SUCCESS = 0x04
     /**
      * 连接成功
      */
-    const val ACTION_CONNECTED = "com.sanmen.bluesky.subway.ACTION_CONNECTED"
+    const val ACTION_CONNECTED = 0x05
 
     /**
      * 连接中
      */
-    const val ACTION_CONNECTING = "com.sanmen.bluesky.subway.ACTION_CONNECTING"
+    const val ACTION_CONNECTING = 0x06
     /**
      * 连接断开
      */
-    const val ACTION_DISCONNECTED = "com.sanmen.bluesky.subway.ACTION_DISCONNECTED"
+    const val ACTION_DISCONNECTED = 0x07
 
     /**
      * 连接失败
      */
-    const val ACTION_CONNECT_FAILED = "com.sanmen.bluesky.subway.ACTION_CONNECT_FAILED"
+    const val ACTION_CONNECT_FAILED = 0x08
     /**
      * 发现服务
      */
-    const val ACTION_SERVICES_DISCOVERED = "com.sanmen.bluesky.subway.ACTION_SERVICES_DISCOVERED"
+    const val ACTION_SERVICES_DISCOVERED = 0x09
     /**
      * 无指定目标设备
      */
-    const val ACTION_SEARCH_DEVICE_NONE = "com.sanmen.bluesky.subway.ACTION_SEARCH_DEVICE_NONE"
+    const val ACTION_SEARCH_DEVICE_NONE = 0x0a
     /**
      * 取消搜索
      */
-    const val ACTION_SEARCH_DEVICE_CANCELED = "com.sanmen.bluesky.subway.ACTION_SEARCH_DEVICE_CANCELED"
+    const val ACTION_SEARCH_DEVICE_CANCELED = 0x0b
     /**
      * 获得数据
      */
-    const val ACTION_DATA_AVAILABLE = "com.sanmen.bluesky.subway.ACTION_DATA_AVAILABLE "
+    const val ACTION_DATA_AVAILABLE = 0x0c
     /**
      *  读取数据失败
      */
-    const val ACTION_READ_DATA_FAILED = "com.sanmen.bluesky.subway.ACTION_READ_DATA_FAILED "
+    const val ACTION_READ_DATA_FAILED = 0x0d
     /**
      * 读取数据成功
      */
-    const val ACTION_READ_DATA_SUCCESS = "com.sanmen.bluesky.subway.ACTION_READ_DATA_SUCCESS "
+    const val ACTION_READ_DATA_SUCCESS = 0x0e
+
+    /**
+     * 搜索到报警灯蓝牙
+     */
+    const val ACTION_SEARCH_ALARM_DEVICE_SUCCESS = 0X10
+    /**
+     * 搜索到站台蓝牙
+     */
+    const val ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS = 0X11
 
     /**
      * 行车方向
