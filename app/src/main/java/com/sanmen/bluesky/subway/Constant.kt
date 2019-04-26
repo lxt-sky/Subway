@@ -74,11 +74,13 @@ object Constant {
     /**
      * 搜索到报警灯蓝牙
      */
-    const val ACTION_SEARCH_ALARM_DEVICE_SUCCESS = 0X10
+    const val ACTION_SEARCH_ALARM_DEVICE_SUCCESS = 0x10
     /**
      * 搜索到站台蓝牙
      */
-    const val ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS = 0X11
+    const val ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS = 0x11
+
+    const val ACTION_SEARCH_PLATFORM_DEVICE_FAILED = 0x12
 
     /**
      * 行车方向

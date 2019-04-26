@@ -8,6 +8,7 @@ import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.PowerManager
+import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
@@ -230,6 +231,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
             }
             ACTION_READ_DATA_FAILED->{
                 Toast.makeText(this@AlarmActivity,"读取数据失败！",Toast.LENGTH_LONG).show()
+                Log.e(".AlarmActivity",msg.getData())
             }
         }
     }
@@ -253,11 +255,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         alarmAdapter.notifyDataSetChanged()
         rvAlarmList.scrollToPosition(alarmData.size-1)
         //开启振动和声音
-
-        //延迟执行
-        mHandler.postDelayed({
-            mSoundPoolUtils.startVideoAndVibrator(R.raw.ring,1000)
-        },(1000*delayTime).toLong())
+        mSoundPoolUtils.startVideoAndVibrator(R.raw.ring,1000)
 
     }
 
@@ -278,12 +276,24 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
                 lightValue = lightData.toInt()
             }
         }
-        if (!isAlarming&& lightValue>lightThreshold*unitValue){//光照阈值*单元值,例如:4*5000=20000
+
+        if (lightValue>lightThreshold*unitValue){//光照阈值*单元值,例如:4*5000=20000
             isAlarming = true
-            addOneAlarmInfo()
-        }else if (isAlarming&&lightValue <=lightThreshold*unitValue){
+
+        }else if (lightValue <=lightThreshold*unitValue){
             isAlarming = false
         }
+
+        if (isAlarming){
+            //延迟执行
+            mHandler.postDelayed({
+                if (isAlarming){
+                    addOneAlarmInfo()
+                }
+            },(1000*delayTime).toLong())
+        }
+
+
     }
 
     override fun onDestroy() {

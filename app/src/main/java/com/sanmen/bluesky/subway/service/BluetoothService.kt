@@ -31,14 +31,20 @@ import android.nfc.Tag
 import android.os.Build
 import android.system.Os.close
 import com.inuker.bluetooth.library.utils.BluetoothUtils.sendBroadcast
+import com.inuker.bluetooth.library.utils.BluetoothUtils.unregisterReceiver
 import com.sanmen.bluesky.subway.Constant
 import com.sanmen.bluesky.subway.Constant.ACTION_CONNECT_FAILED
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_ALARM_DEVICE_SUCCESS
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_FAILED
+import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_PLATFORM_DEVICE_FAILED
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_STARTED
 import com.sanmen.bluesky.subway.data.bean.NotifyMessage
 import com.sanmen.bluesky.subway.utils.AppExecutors
+import io.reactivex.internal.subscriptions.SubscriptionHelper.cancel
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.greenrobot.eventbus.EventBus
 
 
@@ -52,15 +58,36 @@ private const val TAG = ".BluetoothService"
 
 class BluetoothService : Service() {
 
-    private var mBluetoothGatt: BluetoothGatt? = null
+    private val alarmDeviceName = "Lsensor"//MEIZU EP52 Lite,Lsensor
+
+    private val platformDeviceName = "BT20"//Lsensor-1
 
     private var mTargetDevice: BluetoothDevice? = null
 
-    private val alarmDeviceName = "Lsensor"//MEIZU EP52 Lite,Lsensor
+    private var latestPlatformDevice:BluetoothDevice? = null
 
-    private val platformDeviceName = "MEIZU EP52 Lite"//Lsensor-1
+    private var connectThread: ConnectThread? = null
 
+    /**
+     * 断开连接
+     */
+    private var isLinkCancel: Boolean=false
+
+    /**
+     * 是否扫描到报警灯设备
+     */
     private var searchAlarmDevice = false
+    /**
+     * 列车是否到站
+     */
+    private var isArrived: Boolean = false
+
+    private var trainState: Int = 0//0未上线，1到站，2出站
+
+    /**
+     * 设备匹配次数，在不能搜索到站台设备时开始计数，大于30则认定列车出站
+     */
+    private var matchDeviceCount = 0
 
     /**
      * 设备列表Address集合
@@ -71,6 +98,12 @@ class BluetoothService : Service() {
      * BluetoothSocket集合
      */
     private var socketList = mutableListOf<BluetoothSocket>()
+
+    /**
+     * 范围内设备MAC地址集合
+     */
+    private var deviceMacSet = mutableSetOf<String>()
+
 
     private val mBinder:MyBinder by lazy {
         MyBinder(this@BluetoothService)
@@ -97,8 +130,6 @@ class BluetoothService : Service() {
             this.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
             registerReceiver(mBroadcastReceiver,this)
         }
-        //注册Eventbus
-//        EventBus.getDefault().register(this)
     }
     /**
      * 是否支持蓝牙
@@ -139,8 +170,11 @@ class BluetoothService : Service() {
         if (mBluetoothAdapter.isDiscovering) {
             mBluetoothAdapter.cancelDiscovery()
         }
+
+        isLinkCancel = false
+        latestPlatformDevice = null
         //开始搜索
-        EventBus.getDefault().post(NotifyMessage().setCode(ACTION_SEARCH_STARTED))
+        EventBus.getDefault().post(NotifyMessage().setCode(ACTION_SEARCH_STARTED).setData(trainState))
         mBluetoothAdapter.startDiscovery()
 
     }
@@ -157,9 +191,10 @@ class BluetoothService : Service() {
 
         //设备配对
         bondDevice(remoteDevice)
-        val connectThread = ConnectThread(remoteDevice,platformDeviceName)
 
-        connectThread.start()
+
+        //当搜到站台设备时，开始准备和站台蓝牙通信
+
         //提交执行任务：任务一：接收站台蓝牙数据
 //        appExecutors.connectThread().execute(connectThread)
 
@@ -176,11 +211,28 @@ class BluetoothService : Service() {
 
         //设备配对
         bondDevice(remoteDevice)
-        val alarmThread = AlarmThread(remoteDevice,alarmDeviceName)
-        alarmThread.start()
-        //提交执行任务：任务二：接收报警灯蓝牙数据
-//        appExecutors.connectThread().execute(connectThread)
+        //执行蓝牙连接
+        if (addSocket(remoteDevice)) {
+            connected(socketList[0],alarmDeviceName)
+        }
     }
+
+    private fun addSocket(remoteDevice: BluetoothDevice?):Boolean {
+
+        var socket: BluetoothSocket? = null
+        try {
+            socket = remoteDevice!!.createRfcommSocketToServiceRecord(UUID.fromString(MY_UUID))
+        }catch (e:IOException){
+            //建立连接通道失败
+
+        }
+        if (socket != null) {
+            socketList.add(socket)
+            return true
+        }
+        return false
+    }
+
 
     fun bondDevice(device: BluetoothDevice){
 
@@ -190,24 +242,20 @@ class BluetoothService : Service() {
         }
     }
 
-    private fun close() {
-
-        if (mBluetoothGatt == null) return
-
-        disConnect()
-        mBluetoothGatt?.close()
-        mBluetoothGatt = null
-    }
-
     /**
      * 断开连接
      */
     fun disConnect(){
         //广播当前状态为连接已断开
-//        isConnected = false
+        isLinkCancel = true
+        searchAlarmDevice = false//查找报警灯设备置为初值
+        isArrived = false
+        mTargetDevice = null
+        connectThread?.cancel()
+        deviceList.clear()
+        socketList.clear()
+        mBluetoothAdapter.cancelDiscovery()
 
-//        mTargetDevice = null
-//        connectThread.interrupt()
         EventBus.getDefault().post(NotifyMessage().setCode(ACTION_DISCONNECTED))
 
     }
@@ -241,20 +289,62 @@ class BluetoothService : Service() {
                 BluetoothDevice.ACTION_FOUND->{//发现设备
 
                     val device:BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-                    addDevice2List(device)
+
+                    if (device != null) {
+                        addDevice2List(device)
+                    }
                 }
 
                 BluetoothAdapter.ACTION_DISCOVERY_FINISHED->{//搜索结束
 
-                    val notifyMessage = NotifyMessage()
+                    val notifyMessage = NotifyMessage()//搜索完成
+
+                    if (isLinkCancel){
+                        return
+                    }
+                    if (searchAlarmDevice){
+
+                        if (isArrived){
+
+                            if (trainState==0){//列车上线
+                                searchTargetDevice()
+                            }else if (trainState==1){//列车到站
+                                searchTargetDevice()
+                            }else if (trainState == 2){//列车出站
+                                //列车出站
+                                EventBus.getDefault().post(NotifyMessage().setCode(ACTION_SEARCH_PLATFORM_DEVICE_FAILED))
+                                //立即取消搜索
+                                mBluetoothAdapter.cancelDiscovery()
+                                //结束接收光照数据
+                                isGettingDeviceData(false)
+                                isArrived = false
+
+                                GlobalScope.launch {
+                                    delay(10000)
+
+                                    searchTargetDevice()
+                                }
+                            }
+
+                        }else{//搜索站点失败
+                            searchTargetDevice()
+                        }
+
+                    }else{//搜索报警灯失败
+
+                    }
 
                     //搜索结束
                     when(deviceList.size) {
                         0 -> {//搜索失败
+                            mBluetoothAdapter.cancelDiscovery()
                             EventBus.getDefault().post(notifyMessage.setCode(ACTION_SEARCH_FAILED))
+
                         }
                         1 -> {//等待列车进站，搜索站台蓝牙
-                            searchTargetDevice()
+//                            if(!isSearchCancel){
+//                                searchTargetDevice()
+//                            }
                         }
                         2 -> {//搜索完成
 
@@ -269,26 +359,66 @@ class BluetoothService : Service() {
     /**
      * 添加蓝牙设备至列表
      */
-    private fun addDevice2List(device: BluetoothDevice?) {
+    private fun addDevice2List(device: BluetoothDevice) {
 
-        if (!searchAlarmDevice&&device?.name==alarmDeviceName){//报警灯蓝牙
-            searchAlarmDevice = true
-            //清空列表
-            deviceList.clear()
-            //提示--搜索到报警灯蓝牙
-            deviceList.add(device)
+        //添加设备至集合
+        if (!deviceMacSet.contains(device.address)){
+            deviceMacSet.add(device.address)
+        }
+
+        //搜到报警灯-列车上线
+        if (!searchAlarmDevice){//报警灯蓝牙
+            if (device.name ==alarmDeviceName){
+                trainState = 0//列车刚上线
+                //清空列表
+                deviceList.clear()
+                //提示--搜索到报警灯蓝牙
+                deviceList.add(device)
 //            mBluetoothAdapter.cancelDiscovery()
-            EventBus.getDefault().post(NotifyMessage().setCode(ACTION_SEARCH_ALARM_DEVICE_SUCCESS))
+                EventBus.getDefault().post(NotifyMessage().setCode(ACTION_SEARCH_ALARM_DEVICE_SUCCESS))
+            }else{
+//                return
+            }
+        }
+
+        if (searchAlarmDevice){//站台蓝牙
+
+            if (device.name ==platformDeviceName){
+                //列车进站
+                latestPlatformDevice = device
+
+                if (!isArrived){
+                    //开始接收光照数据
+                    isGettingDeviceData(true)
+                    //搜索到站台蓝牙
+                    EventBus.getDefault().post(NotifyMessage().setCode(ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS))
+                    isArrived = true
+                }
+            }
 
         }
-        if (searchAlarmDevice&&device?.name==platformDeviceName){//站台蓝牙
-            deviceList.add(device)
-            //立即取消搜索
-            mBluetoothAdapter.cancelDiscovery()
-            //搜索到站台蓝牙
-            EventBus.getDefault().post(NotifyMessage().setCode(ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS))
 
+        if (latestPlatformDevice!=null){
+            if (device.address == latestPlatformDevice!!.address&&deviceMacSet.contains(device.address)){//还在站内
+                trainState = 1 //一次循环有目标设备，在站内
+            }
+        }else{
+            trainState=2 //一次循环无目标设备，在站外
         }
+
+    }
+
+    /**
+     * 是否获取设备数据
+     */
+    private fun isGettingDeviceData(state: Boolean){
+
+        if (connectThread!=null&& connectThread?.isAlive!!){
+            connectThread?.isGetData(state)
+        }else{
+            connected(socketList[0],alarmDeviceName)
+        }
+
     }
 
     override fun onBind(intent: Intent?): IBinder? =mBinder
@@ -297,7 +427,6 @@ class BluetoothService : Service() {
         super.onDestroy()
 
         unregisterReceiver(mBroadcastReceiver)
-//        EventBus.getDefault().unregister(this)
         mClient.unregisterBluetoothBondListener(mBluetoothBondListener)
     }
 
@@ -311,71 +440,220 @@ class BluetoothService : Service() {
         }
     }
 
+    /**
+     * 执行设备连接请求
+     */
+    private fun connected(socket: BluetoothSocket?, tag: Any?) {
+
+        try {
+//            connectedThread?.run {
+//                cancel()
+//                connectedThread = null
+//            }
+//            alarmThread?.run{
+//                cancel()
+//                alarmThread = null
+//            }
+            connectThread?.run{
+                cancel()
+                connectThread = null
+            }
+
+            //可以考虑设置tag
+            this.connectThread = ConnectThread(socket,tag)
+            this.connectThread!!.start()
+        }finally {
+
+        }
+
+    }
+
 
     /**
-     * 连接站台蓝牙
+     * 连接蓝牙线程
      */
-    class ConnectThread(remoteDevice: BluetoothDevice, tag: Any): Thread() {
+    inner class ConnectThread(socket: BluetoothSocket?,tag: Any?): Thread() {
 
-        private var bluetoothSocket: BluetoothSocket? = null
-        private var tag: Any? = null
-        private var isConnected: Boolean = false
+        private var isGetData: Boolean = false
+        private var mBluetoothSocket: BluetoothSocket? = null
+        private val notifyMessage = NotifyMessage()
+        private var tag:Any?=null
+        private var isConnected = false
         init {
-            bluetoothSocket = remoteDevice.createRfcommSocketToServiceRecord(UUID.fromString(MY_UUID))
+
+            if (socket!=null){
+                mBluetoothSocket = socket
+                //连接中
+                EventBus.getDefault().post(notifyMessage.setCode(ACTION_CONNECTING))
+            }
             this.tag = tag.toString()
         }
+
         override fun run() {
             super.run()
 
-            isConnected=true
-            val notifyMessage = NotifyMessage()
-            notifyMessage.tag = tag
-            //连接中
-            EventBus.getDefault().post(notifyMessage.setCode(ACTION_CONNECTING))
-            if (isConnected){
-                try {
-                    //执行连接
-                    bluetoothSocket!!.connect()
-                }catch (e: IOException){
-                    //连接失败
-                    EventBus.getDefault().post(notifyMessage.setCode(ACTION_CONNECT_FAILED))
-                    return
-                }
-            }
-            val inputStream:InputStream
             try {
-                inputStream = bluetoothSocket!!.inputStream
-            }catch (e:IOException){
+                //执行连接
+                mBluetoothSocket?.connect()
+            }catch (e: IOException){
                 //连接失败
-                EventBus.getDefault().post(notifyMessage.setCode(ACTION_CONNECT_FAILED))
+                EventBus.getDefault().post(notifyMessage.setCode(ACTION_CONNECT_FAILED).setData(e.toString()))
+                mBluetoothAdapter.cancelDiscovery()
                 return
             }
 
+            isConnected = true
+
             //连接成功
             EventBus.getDefault().post(notifyMessage.setCode(ACTION_CONNECTED))
+            //列车已上线
+            searchAlarmDevice = true
+
+            var inputStream: InputStream?
+            try {
+                inputStream = mBluetoothSocket!!.inputStream
+            }catch (e:IOException){
+                //连接失败
+                EventBus.getDefault().post(notifyMessage.setCode(ACTION_CONNECT_FAILED).setData(e.toString()))
+                mBluetoothAdapter.cancelDiscovery()
+                return
+            }
 
             var i=0
             val data = ByteArray(1024)
 
             while (isConnected){
-                try {
 
-                    val count = inputStream.available()
-                    if (count!=0){
-                        val buffer = ByteArray(count)
-                        val bytes =inputStream.read(buffer,0,count)
-                        if (bytes>0){
-                            System.arraycopy(buffer, 0, data, 0, bytes)
+                if (isGetData){
+                    try {
+
+                        if (inputStream==null) return
+
+                        val byte = inputStream.read().toByte()
+                        if (byte== '\r'.toByte()){//13,10---\r\n
+                            val reData = ByteArray(i)
+                            System.arraycopy(data, 0, reData, 0, i)
+                            //读取数据成功
+                            EventBus.getDefault().post(notifyMessage.setCode(ACTION_READ_DATA_SUCCESS).setData(String(reData)).setTag(tag))
+                            i=0
                         }
-
+                        else if (byte=='\n'.toByte()){
+                            continue
+                        }else{
+                            data[i++]=byte
+                        }
+                    }catch (e:IOException){
+                        //读取数据失败
+                        EventBus.getDefault().post(notifyMessage.setCode(ACTION_READ_DATA_FAILED).setData(e.toString()))
+                        disConnect()
+                        return
                     }
-                }catch (e:IOException){
 
                 }
+
+            }
+        }
+
+        /**
+         * 是否接收数据
+         */
+        fun isGetData(state: Boolean){
+            this.isGetData = state
+        }
+
+        /**
+         * 关闭线程
+         */
+        fun cancel(){
+            try {
+                isConnected = false
+                this.mBluetoothSocket?.close()
+                return
+            }catch (e:IOException){
+                //关闭蓝牙连接失败
+            }
+        }
+    }
+
+    /**
+     * 连接成功行线程
+     */
+    class ConnectedThread(bluetoothSocket: BluetoothSocket?,tag: Any?):Thread(){
+        private var isGetData: Boolean = true
+        private var mInputStream: InputStream? = null
+
+        private var mBluetoothSocket:BluetoothSocket?=null
+
+        private val notifyMessage = NotifyMessage()
+
+        private var tag:Any?=null
+
+
+        var isConnected = false
+
+        init {
+            if (bluetoothSocket!=null){
+                this.mBluetoothSocket = bluetoothSocket
+
+                //连接成功
+                EventBus.getDefault().post(notifyMessage.setCode(ACTION_CONNECTED))
+
+                var inputStream: InputStream? =null
+                try {
+                    inputStream = mBluetoothSocket!!.inputStream
+                }catch (e:IOException){
+                    //连接失败
+                    EventBus.getDefault().post(notifyMessage.setCode(ACTION_CONNECT_FAILED))
+                }
+                this.mInputStream = inputStream
+                this.tag = tag
+                isConnected = true
             }
 
+        }
 
+        override fun run() {
+            super.run()
 
+            var i=0
+            val data = ByteArray(1024)
+
+            do {
+                if (isGetData){
+                    try {
+
+                        if (mInputStream==null) return
+
+                        val byte = mInputStream!!.read().toByte()
+
+                        if (byte== '\r'.toByte()){//13,10---\r\n
+                            val reData = ByteArray(i)
+                            System.arraycopy(data, 0, reData, 0, i)
+                            //读取数据成功
+                            EventBus.getDefault().post(notifyMessage.setCode(ACTION_READ_DATA_SUCCESS).setData(String(reData)).setTag(tag))
+                            i=0
+                        }
+                        else if (byte=='\n'.toByte()){
+                            continue
+                        }else{
+                            data[i++]=byte
+                        }
+                    }catch (e:IOException){
+                        //读取数据失败
+                        EventBus.getDefault().post(notifyMessage.setCode(ACTION_READ_DATA_FAILED))
+                        break
+                    }
+                }
+            }while (isConnected)
+        }
+
+        fun cancel(){
+            try {
+                this.mBluetoothSocket?.close()
+                return
+            }catch (e:IOException){
+                //关闭蓝牙连接失败
+            }
         }
     }
 
@@ -450,13 +728,13 @@ class BluetoothService : Service() {
                 }
             }
             bluetoothSocket = null
-            this.close()
+            this.cancel()
             if (!isConnected) run { Log.d(TAG, "ConnectedThread END since user cancel.") }
             else run { Log.d(TAG, "ConnectedThread END.") }
 
         }
 
-        fun close(){
+        fun cancel(){
             try {
                 isConnected =false
                 if (bluetoothSocket!=null){

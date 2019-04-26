@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.os.Handler
 
 import android.os.IBinder
+import android.util.Log
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.chad.library.adapter.base.BaseQuickAdapter
@@ -35,6 +36,7 @@ import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_FAILED
 import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_SUCCESS
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_ALARM_DEVICE_SUCCESS
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_FAILED
+import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_PLATFORM_DEVICE_FAILED
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_STARTED
 import com.sanmen.bluesky.subway.Constant.DEVICE_NOT_SUPPORT_BLUETOOTH
@@ -174,6 +176,7 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
             loadView.isShowSubText(false)
             if(linkState==0){
                 //搜索目标设备
+                linkState = 1
                 mBluetoothService!!.searchTargetDevice()
                 loadView.startSpinning()
             }else if (linkState==2){
@@ -322,8 +325,9 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
     fun onEventMainThread(msg: NotifyMessage){
         when(msg.code){
             ACTION_SEARCH_STARTED->{//开始搜索设备
-                linkState = 1
-                loadView.nextText("搜索中",1)
+                if (msg.getData() as Int!=1){//列车已进站
+                    loadView.nextText("搜索中",1)
+                }
             }
 
             ACTION_SEARCH_FAILED->{//搜索设备失败
@@ -334,16 +338,19 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
 
             ACTION_SEARCH_ALARM_DEVICE_SUCCESS->{//搜索到报警灯蓝牙
                 loadView.nextText("发现报警灯蓝牙",1)
-
+                mBluetoothService!!.connectAlarmDevice()
             }
 
             ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS->{//搜索到站台蓝牙
-                loadView.nextText("发现站台蓝牙",1)
-                //测试连接可用性
-                mBluetoothService!!.connectPlatformDevice()
+                loadView.nextText("列车已进站",1)
+
+            }
+            ACTION_SEARCH_PLATFORM_DEVICE_FAILED->{//列车已出站
+                loadView.nextText("列车已出站",1)
             }
 
             ACTION_CONNECTING->{//设备连接中
+
                 loadView.nextText("连接中",1)
             }
 
@@ -351,7 +358,7 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
                 linkState = 2
                 btnLinked.text = "断开连接"
                 btnLinked.setBackgroundResource(R.drawable.shape_btn_2)
-                Toast.makeText(this@ConnectActivity,"连接成功",Toast.LENGTH_SHORT).show()
+//                Toast.makeText(this@ConnectActivity,"连接成功",Toast.LENGTH_SHORT).show()
 
                 loadView.nextText(if (driveDir==0) "上行" else "下行",1)
                 loadView.isShowSubText(true)
@@ -364,6 +371,7 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
                 linkState = 0
                 btnLinked.text = "连接"
                 btnLinked.setBackgroundResource(R.drawable.shape_btn_1)
+//                Toast.makeText(this,"连接已断开",Toast.LENGTH_LONG).show()
                 loadView.nextText("未连接",1)
                 loadView.stopSpinning()
             }
@@ -374,14 +382,8 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
                 btnLinked.setBackgroundResource(R.drawable.shape_btn_1)
                 loadView.nextText("连接失败",1)
                 loadView.stopSpinning()
-            }
-
-            ACTION_READ_DATA_SUCCESS->{//读取数据成功
-
-            }
-
-            ACTION_READ_DATA_FAILED->{//读取数据失败
-
+                Log.e(".ConnectActivity",msg.getData())
+                return
             }
         }
     }
