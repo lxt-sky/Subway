@@ -1,12 +1,10 @@
 package com.sanmen.bluesky.subway.ui.activities
 
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.media.AudioManager
 import android.os.Bundle
 import android.os.Handler
+import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import android.view.View
@@ -26,6 +24,7 @@ import com.sanmen.bluesky.subway.data.bean.NotifyMessage
 import com.sanmen.bluesky.subway.data.dao.AlarmDao
 import com.sanmen.bluesky.subway.data.database.DriveDatabase
 import com.sanmen.bluesky.subway.data.repository.AlarmRepository
+import com.sanmen.bluesky.subway.service.BluetoothService
 import com.sanmen.bluesky.subway.ui.base.BaseActivity
 import com.sanmen.bluesky.subway.ui.fragments.TimeSelectDialog
 import com.sanmen.bluesky.subway.utils.AppExecutors
@@ -55,6 +54,8 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
     private var lightThreshold:Int=0
 
     private var unitValue:Int = 0
+
+    private var mBluetoothService: BluetoothService? =null
 
     private val mHandler: Handler by lazy {
         Handler()
@@ -109,6 +110,10 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         }
 
         ivSound.isSelected = isSound
+
+        //绑定服务
+        val intent = Intent(this,BluetoothService::class.java)
+        bindService(intent,mServiceConnection,Context.BIND_AUTO_CREATE)
     }
 
     override fun initData() {
@@ -228,6 +233,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
             ACTION_READ_DATA_SUCCESS ->{//读取数据成功
                 val lightData = msg.getData<String>()
                 toParseCommand(lightData)
+
             }
             ACTION_READ_DATA_FAILED->{
                 Toast.makeText(this@AlarmActivity,"读取数据失败！",Toast.LENGTH_LONG).show()
@@ -296,9 +302,28 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
 
     }
 
+    /**
+     * Service连接回调
+     */
+    private val mServiceConnection = object : ServiceConnection {
+        override fun onServiceDisconnected(name: ComponentName?) {
+
+        }
+
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val myBinder = service as BluetoothService.MyBinder
+            mBluetoothService = myBinder.getService(this@AlarmActivity)
+
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
 
+        if (mBluetoothService!=null){
+            unbindService(mServiceConnection)
+            mBluetoothService = null
+        }
         EventBus.getDefault().unregister(this)
     }
 
