@@ -23,6 +23,7 @@ import java.io.InputStream
 import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
+import android.util.Log
 import com.sanmen.bluesky.subway.Constant.ACTION_CONNECT_FAILED
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_ALARM_DEVICE_SUCCESS
 import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_FAILED
@@ -161,12 +162,12 @@ class BluetoothService : Service() {
         if (mBluetoothAdapter.isDiscovering) {
             mBluetoothAdapter.cancelDiscovery()
         }
-
+        //开始搜索
+        EventBus.getDefault().post(NotifyMessage().setCode(ACTION_SEARCH_STARTED).setData(trainState))
         trainState = 2
         isLinking = true
         latestPlatformDevice = null
-        //开始搜索
-        EventBus.getDefault().post(NotifyMessage().setCode(ACTION_SEARCH_STARTED).setData(trainState))
+
         mBluetoothAdapter.startDiscovery()
 
     }
@@ -528,68 +529,77 @@ class BluetoothService : Service() {
         override fun run() {
             super.run()
 
+//            val data = ByteArray(1024)
+            var i=0
             val data = ByteArray(1024)
 
-            while (isConnected){
+            try {
 
-                if (isGetData){
-                    try {
+                while (true){
+                    if (isGetData){
                         if (mInputStream==null) return
 
-                        val count  = mInputStream!!.available()
-                        mInputStream!!.read(data)
+//                        val count  = mInputStream!!.available()
+//
+//                        if (count>0){
+//                            mInputStream!!.read(data)
+//                            for (i in data.indices){
+//                                if (data[i]=='\n'.toByte()){
+//                                    isBeginGetByte= true
+//                                    begin = i
+//                                    continue
+//                                } else if (isBeginGetByte&&data[i]== '\r'.toByte()){//13,10---\r\n
+//                                    end = i
+//                                    val size = end-begin-1
+//                                    val reData = ByteArray(size)
+//                                    isBeginGetByte = false
+//                                    if (size<3){//无效数据
+//
+//                                    }else{
+//                                        System.arraycopy(data, begin+1, reData, 0, size)
+//                                        //读取数据成功
+//                                        EventBus.getDefault().post(notifyMessage.setCode(ACTION_READ_DATA_SUCCESS).setData(String(reData)).setTag(tag))
+//                                        Log.e(".service",String(reData))
+//                                        break
+//                                    }
+//                                }
+//                            }
+//                        }else{
+////                            EventBus.getDefault().post(notifyMessage.setCode(ACTION_READ_DATA_FAILED).setData("字节流：$count"))
+////                            cancel()
+//                        }
 
-                        for (i in data.indices){
-                            if (data[i]== '\r'.toByte()){//13,10---\r\n
-                                end = i
-                                val size = end-begin
-                                val reData = ByteArray(size)
-                                System.arraycopy(data, 0, reData, 0, size)
-                                //读取数据成功
-                                EventBus.getDefault().post(notifyMessage.setCode(ACTION_READ_DATA_SUCCESS).setData(String(reData)).setTag(tag))
-                                return
-                            }
-                            else if (data[i]=='\n'.toByte()){
-                                isBeginGetByte= true
-                                continue
-                            }else if (isBeginGetByte){
-                                begin = i
-                            }
+
+                        val byte = mInputStream!!.read().toByte()
+                        if (byte== '\r'.toByte()){//13,10---\r\n
+                            val reData = ByteArray(i)
+                            System.arraycopy(data, 0, reData, 0, i)
+                            //读取数据成功
+                            EventBus.getDefault().post(notifyMessage.setCode(ACTION_READ_DATA_SUCCESS).setData(String(reData)).setTag(tag))
+                            i=0
+                        }
+                        else if (byte=='\n'.toByte()){
+                            isBeginGetByte= true
+                            continue
+                        }else if (isBeginGetByte){
+                            data[i++]=byte
                         }
 
-
-
-
-//                        var i=0
-//                        val data = ByteArray(1024)
-
-//                        val byte = mInputStream!!.read().toByte()
-//                        if (byte== '\r'.toByte()){//13,10---\r\n
-//                            val reData = ByteArray(i)
-//                            System.arraycopy(data, 0, reData, 0, i)
-//                            //读取数据成功
-//                            EventBus.getDefault().post(notifyMessage.setCode(ACTION_READ_DATA_SUCCESS).setData(String(reData)).setTag(tag))
-//                            i=0
-//                        }
-//                        else if (byte=='\n'.toByte()){
-//                            isBeginGetByte= true
-//                            continue
-//                        }else if (isBeginGetByte){
-//                            data[i++]=byte
-//                        }
-                    }catch (e:IOException){
-                        //读取数据失败
-                        disConnect()
-                        EventBus.getDefault().post(notifyMessage.setCode(ACTION_READ_DATA_FAILED).setData(e.toString()))
-                        cancel()
-                        return
+                    }else{
+                        isBeginGetByte= false
                     }
 
-                }else{
-                    isBeginGetByte= false
                 }
+                return
 
+            }catch (e:IOException){
+                //读取数据失败
+                disConnect()
+                EventBus.getDefault().post(notifyMessage.setCode(ACTION_READ_DATA_FAILED).setData(e.toString()))
+                cancel()
+                return
             }
+
         }
 
         /**

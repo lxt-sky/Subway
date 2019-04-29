@@ -1,15 +1,18 @@
 package com.sanmen.bluesky.subway.ui.activities
 
+import android.Manifest
+import android.app.Activity
+import android.app.NotificationManager
 import android.content.*
 import android.media.AudioManager
-import android.os.Bundle
-import android.os.Handler
-import android.os.IBinder
-import android.os.PowerManager
+import android.media.audiofx.BassBoost
+import android.os.*
+import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.chad.library.adapter.base.BaseQuickAdapter
 import com.gyf.barlibrary.ImmersionBar
@@ -40,6 +43,8 @@ import java.util.*
 class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
 
     private var isAlarming: Boolean=false
+
+    private var isBeginDelay:Boolean = false
 
     private var alarmData = mutableListOf<AlarmInfo>()
 
@@ -129,6 +134,11 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         EventBus.getDefault().register(this)
     }
 
+    override fun onResume() {
+        super.onResume()
+
+    }
+
     /**
      * 在退出当前页面时，保存报警数据和行车记录
      */
@@ -170,21 +180,27 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         when(it.id){
             //静音按钮
             R.id.ivSound->{
-
                 val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-                isSound = !isSound
-                it.isSelected = isSound
-                audioManager.run {
-                    this.ringerMode =if (isSound){
-                        AudioManager.RINGER_MODE_NORMAL
-                    }else{
-                        AudioManager.RINGER_MODE_SILENT
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+                    && !notificationManager.isNotificationPolicyAccessGranted
+                ) {
+                    val intent =Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                    applicationContext.startActivity(intent)
+                }else{
+                    isSound = !isSound
+                    it.isSelected = isSound
+                    audioManager.run {
+                        this.ringerMode =if (isSound){
+                            AudioManager.RINGER_MODE_NORMAL
+                        }else{
+                            AudioManager.RINGER_MODE_SILENT
+                        }
+                        this.getStreamVolume(AudioManager.STREAM_RING)
+
                     }
-                    this.getStreamVolume(AudioManager.STREAM_RING)
-
                 }
-
             }
             //清空按钮
             R.id.btnClear->{
@@ -271,7 +287,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
     private fun toParseCommand(lightData: String?) {
 
         var lightValue = 0
-        if (lightData != null) {
+        if (lightData != null&&lightData!="") {
             if (lightData.indexOf(',')!=-1){//双灯
                 var array = lightData.split(',')
                 if (array.isNotEmpty()){
@@ -283,24 +299,29 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
             }
         }
 
-        if (lightValue>lightThreshold*unitValue){//光照阈值*单元值,例如:4*5000=20000
-            isAlarming = true
 
-        }else if (lightValue <=lightThreshold*unitValue){
-            isAlarming = false
-        }
 
-        if (isAlarming){
-            //延迟执行
-            mHandler.postDelayed({
-                if (isAlarming){
+        if (!isAlarming){//如果未报警
+            if (getAlarmState(lightValue)){//灯亮
+                if (!isBeginDelay){//是否开始计时
+                    mHandler.postDelayed({//时间到，打开通道
+                        isAlarming = false
+                        isBeginDelay = true
+                    },(1000*delayTime).toLong())
+                    isAlarming = true//已捕捉到报警信号
+
+                }else{//计时结束
                     addOneAlarmInfo()
+                    isBeginDelay = false
                 }
-            },(1000*delayTime).toLong())
+            }else{
+                isBeginDelay = false
+            }
         }
-
 
     }
+
+    private fun getAlarmState(lightValue:Int):Boolean=lightValue>lightThreshold*unitValue //光照阈值*单元值,例如:4*5000=20000
 
     /**
      * Service连接回调
