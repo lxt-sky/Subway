@@ -19,6 +19,9 @@ import com.gyf.barlibrary.ImmersionBar
 import com.sanmen.bluesky.subway.Constant
 import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_FAILED
 import com.sanmen.bluesky.subway.Constant.ACTION_READ_DATA_SUCCESS
+import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_PLATFORM_DEVICE_FAILED
+import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS
+import com.sanmen.bluesky.subway.Constant.ACTION_SEARCH_STARTED
 import com.sanmen.bluesky.subway.Constant.LIGHT_DATA
 import com.sanmen.bluesky.subway.R
 import com.sanmen.bluesky.subway.adapters.AlarmAdapter
@@ -34,6 +37,8 @@ import com.sanmen.bluesky.subway.utils.AppExecutors
 import com.sanmen.bluesky.subway.utils.SoundPoolUtils
 import com.sanmen.bluesky.subway.utils.TimeUtil
 import kotlinx.android.synthetic.main.activity_alarm.*
+import kotlinx.android.synthetic.main.activity_alarm.toolBar
+import kotlinx.android.synthetic.main.activity_connect.*
 import org.apache.poi.ss.formula.functions.Even
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
@@ -246,6 +251,17 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onEventMainThread(msg: NotifyMessage){
         when(msg.code){
+            ACTION_SEARCH_STARTED ->{//开始搜索设备
+                if (msg.getData() as Int!=1){//列车已进站
+                    setAlarmTitle("搜索中")
+                }
+            }
+            ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS ->{//搜索到站台蓝牙
+                setAlarmTitle("列车已进站")
+            }
+            ACTION_SEARCH_PLATFORM_DEVICE_FAILED ->{//列车已出站
+                setAlarmTitle("列车已出站")
+            }
             ACTION_READ_DATA_SUCCESS ->{//读取数据成功
                 val lightData = msg.getData<String>()
                 toParseCommand(lightData)
@@ -256,6 +272,13 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
                 Log.e(".AlarmActivity",msg.getData())
             }
         }
+    }
+
+    /**
+     * 设置标题
+     */
+    private fun setAlarmTitle(title: String) {
+        alarmTitle.text = title
     }
 
     /**
