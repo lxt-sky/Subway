@@ -42,6 +42,7 @@ dependencies {
     //Room
     implementation 'androidx.room:room-runtime:2.0.0-beta01'
     implementation 'androidx.room:room-rxjava2:2.0.0-beta01'
+    implementation 'androidx.legacy:legacy-support-v4:1.0.0-beta01'
     kapt 'androidx.room:room-compiler:2.0.0-beta01'
     implementation 'com.github.CymChad:BaseRecyclerViewAdapterHelper:2.9.45'
     def nav_version = "1.0.0-alpha06"
@@ -62,4 +63,6 @@ dependencies {
     androidTestImplementation 'androidx.test:runner:1.1.0-alpha4'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0-alpha4'
     implementation files('libs/poi-3.8-20120326.jar')
+    implementation 'androidx.recyclerview:recyclerview:1.0.0'
+    implementation 'com.google.android.material:material:1.0.0'
 }

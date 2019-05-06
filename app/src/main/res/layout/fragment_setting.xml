@@ -92,6 +92,34 @@
                     app:srcCompat="@drawable/ic_right"
                     android:layout_gravity="center_vertical"/>
         </LinearLayout>
+        <TextView
+                android:text="连接"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/grayText2"
+                android:padding="10dp"/>
+        <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="10dp"
+                android:background="@drawable/shape_item_shadow"
+                android:id="@+id/llLinkedTest">
+            <TextView
+                    android:text="连接测试"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="14sp"
+                    android:layout_gravity="center_vertical"
+                    android:textColor="@color/blackText"/>
+            <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:srcCompat="@drawable/ic_right"
+                    android:layout_gravity="center_vertical"/>
+        </LinearLayout>
 
         <TextView
                 android:text="关于"

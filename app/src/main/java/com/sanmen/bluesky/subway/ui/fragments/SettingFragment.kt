@@ -98,6 +98,7 @@ class SettingFragment : Fragment() {
         llAbout.setOnClickListener(onClickListener)
         llLight.setOnClickListener (onClickListener)
         llDataClear.setOnClickListener(onClickListener)
+        llLinkedTest.setOnClickListener(onClickListener)
 
     }
 
@@ -138,14 +139,13 @@ class SettingFragment : Fragment() {
 
     private val onClickListener = View.OnClickListener {
         when(it.id){
-            R.id.llAbout->{
+            R.id.llAbout->{//关于
                 NavHostFragment.findNavController(this).navigate(R.id.action_settingFragment_to_aboutActivity)
             }
-            R.id.llLight->{
-                //传递数据
+            R.id.llLight->{//光照设置
                 NavHostFragment.findNavController(this).navigate(R.id.action_settingFragment_to_lightFragment)
             }
-            R.id.llDataClear->{
+            R.id.llDataClear->{//数据清空
                 DialogUtil.getConfirmDialog(
                     this.context!!,resources.getString(R.string.dialog_data_clear),
                     DialogInterface.OnClickListener { _, _ ->
@@ -162,7 +162,7 @@ class SettingFragment : Fragment() {
                         }
                     }).show()
             }
-            R.id.llDataOutput->{
+            R.id.llDataOutput->{//数据导出
 
                 //检查权限
                 if (Build.VERSION.SDK_INT>Build.VERSION_CODES.LOLLIPOP){
@@ -180,6 +180,9 @@ class SettingFragment : Fragment() {
                     }
                 }
 
+            }
+            R.id.llLinkedTest->{//连接测试
+                NavHostFragment.findNavController(this).navigate(R.id.action_settingFragment_to_linkTestFragment)
             }
         }
     }

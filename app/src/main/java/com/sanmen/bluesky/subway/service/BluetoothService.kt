@@ -109,10 +109,6 @@ class BluetoothService : Service() {
         BluetoothAdapter.getDefaultAdapter()
     }
 
-    private val appExecutors: AppExecutors by lazy {
-        AppExecutors()
-    }
-
 
     override fun onCreate() {
         super.onCreate()
