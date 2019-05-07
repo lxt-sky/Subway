@@ -1,24 +1,32 @@
 package com.sanmen.bluesky.subway.ui.activities
 
-import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
+import com.gyf.barlibrary.ImmersionBar
 import com.sanmen.bluesky.subway.R
+import com.sanmen.bluesky.subway.ui.base.BaseActivity
 import kotlinx.android.synthetic.main.activity_about.toolBar
 
-class AboutActivity : AppCompatActivity() {
+class AboutActivity : BaseActivity() {
+    override fun getLayoutId(): Int {
+        return R.layout.activity_about
+    }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_about)
+    override fun initImmersionBar() {
+        super.initImmersionBar()
 
-        setSupportActionBar(toolBar)
-
-        toolBar.setNavigationOnClickListener {
-            onBackPressed()
-        }
+        ImmersionBar.with(this).titleBar(toolBar).init()
 
     }
 
+
+    override fun initView() {
+        super.initView()
+
+        toolBar.run {
+            this.setNavigationOnClickListener {
+                onBackPressed()
+            }
+        }
+    }
 
 
 }

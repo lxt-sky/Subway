@@ -12,6 +12,7 @@
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_back"
             android:background="@color/colorPrimary"
+            android:fitsSystemWindows="true"
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
             app:title="关于" tools:ignore="MissingConstraints"/>
 

@@ -268,7 +268,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
 
             }
             ACTION_READ_DATA_FAILED->{
-                Toast.makeText(this@AlarmActivity,"读取数据失败！",Toast.LENGTH_LONG).show()
+                Toast.makeText(this@AlarmActivity,"读取数据失败！",Toast.LENGTH_SHORT).show()
                 Log.e(".AlarmActivity",msg.getData())
             }
         }

@@ -125,6 +125,11 @@ object Constant {
     const val LIGHT_DATA = "LIGHT_DATA"
 
     /**
+     * 设备 地址
+     */
+    const val MAC_ADDRESS = "MAC_ADDRESS"
+
+    /**
      * 提示文本
      */
     const val DEVICE_NOT_SUPPORT_BLUETOOTH = "当前设备不支持蓝牙"

@@ -188,7 +188,7 @@ class BluetoothService : Service() {
     /**
      * 获取设备BluetoothSocket
      */
-    private fun addSocket(remoteDevice: BluetoothDevice?):Boolean {
+    fun addSocket(remoteDevice: BluetoothDevice?):Boolean {
 
         val socket: BluetoothSocket?
         try {
@@ -206,7 +206,7 @@ class BluetoothService : Service() {
      * 设备配对
      * @param device 目标设备
      */
-    private fun bondDevice(device: BluetoothDevice){
+    fun bondDevice(device: BluetoothDevice){
 
         //未配对设备发起配对
         if (device.bondState==BluetoothDevice.BOND_NONE){
@@ -378,6 +378,14 @@ class BluetoothService : Service() {
 
     }
 
+    fun testDeviceConnection(remoteDevice: BluetoothDevice?){
+
+        if (addSocket(remoteDevice)) {
+            connected(socketList[0],remoteDevice!!.name)
+        }
+
+    }
+
     /**
      * 执行设备连接请求
      */
@@ -396,7 +404,7 @@ class BluetoothService : Service() {
 
     }
 
-    fun communicated(state: Boolean) {
+    private fun communicated(state: Boolean) {
         try {
             communicateThread?.run{
                 cancel()

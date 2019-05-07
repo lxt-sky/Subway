@@ -19,6 +19,7 @@ import com.chad.library.adapter.base.BaseQuickAdapter
 import com.inuker.bluetooth.library.utils.BluetoothUtils.registerReceiver
 import com.inuker.bluetooth.library.utils.BluetoothUtils.unregisterReceiver
 import com.sanmen.bluesky.subway.Constant
+import com.sanmen.bluesky.subway.Constant.MAC_ADDRESS
 
 import com.sanmen.bluesky.subway.R
 import com.sanmen.bluesky.subway.adapters.DeviceAdapter
@@ -133,11 +134,11 @@ class LinkTestFragment : Fragment() {
 
     private val itemClickListener = BaseQuickAdapter.OnItemClickListener{ _, _, position ->
 
-        Toast.makeText(context,"this is item $position",Toast.LENGTH_SHORT).show()
+        mBluetoothAdapter.cancelDiscovery()
+//        Toast.makeText(context,"this is item $position",Toast.LENGTH_SHORT).show()
 
-        val bundle = Bundle()
-        bundle.putString("address",deviceList[position].address)
-        NavHostFragment.findNavController(this@LinkTestFragment).navigate(R.id.action_linkTestFragment_to_linkTestActivity,bundle)
+        NavHostFragment.findNavController(this@LinkTestFragment)
+            .navigate(R.id.action_linkTestFragment_to_linkTestActivity, Bundle().apply { putString(MAC_ADDRESS,deviceList[position].address) })
     }
 
 
