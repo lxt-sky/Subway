@@ -7,24 +7,25 @@
               android:padding="20dp">
 
     <TextView
-            android:text="告警延迟时间(S)"
+            android:text="到站检测延迟时间(S)"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="10dp"/>
 
     <com.sanmen.bluesky.subway.widget.KBubbleSeekBar
-            android:id="@+id/seekBar"
+            android:id="@+id/sbDelayTime"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="10dp"
             app:bsb_bubble_text_color="#ffffff"
             app:bsb_marks="false"
             app:bsb_max="10"
             app:bsb_min="0"
+            app:bsb_progress="4"
             app:bsb_second_track_color="@color/colorPrimary"
             app:bsb_section_count="5"
             app:bsb_section_text_position="below_section_mark"
-            app:bsb_show_progress_in_float="true"
+            app:bsb_show_progress_in_float="false"
             app:bsb_show_section_mark="false"
             app:bsb_show_section_text="true"
             app:bsb_show_thumb_text="true"
@@ -32,6 +33,37 @@
             app:bsb_thumb_text_color="#cabf18"
             app:bsb_touch_to_seek="true"
             app:bsb_track_color="#d1cccc"
-            app:bsb_track_size="14dp"/>
+            app:bsb_track_size="14dp"
+            android:layout_marginBottom="10dp"/>
+
+    <TextView
+            android:text="报警提示间隔时间(S)"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"/>
+
+    <com.sanmen.bluesky.subway.widget.KBubbleSeekBar
+            android:id="@+id/sbIntervalTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            app:bsb_bubble_text_color="#ffffff"
+            app:bsb_marks="false"
+            app:bsb_max="10"
+            app:bsb_min="0"
+            app:bsb_progress="2"
+            app:bsb_second_track_color="@color/colorPrimary"
+            app:bsb_section_count="5"
+            app:bsb_section_text_position="below_section_mark"
+            app:bsb_show_progress_in_float="false"
+            app:bsb_show_section_mark="false"
+            app:bsb_show_section_text="true"
+            app:bsb_show_thumb_text="true"
+            app:bsb_thumb_color="#ffffff"
+            app:bsb_thumb_text_color="#cabf18"
+            app:bsb_touch_to_seek="true"
+            app:bsb_track_color="#d1cccc"
+            app:bsb_track_size="14dp"
+            android:layout_marginBottom="10dp"/>
 
 </LinearLayout>

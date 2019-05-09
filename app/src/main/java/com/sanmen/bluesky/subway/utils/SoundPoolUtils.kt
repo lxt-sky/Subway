@@ -13,20 +13,21 @@ import androidx.annotation.RawRes
  * @date 2019/4/10
  * @description 铃声和震动
  */
-class SoundPoolUtils private constructor(context: Context) {
 
-    private val MAX_STREAMS = 2
+private const val  LEFT_VOLUME:Float = 1.0F
+private const val  RIGHT_VOLUME:Float = 1.0F
+private const val LOOP = 0
+private const val RATE = 1.0f
+private const val DEFAULT_PRIORITY = 1
+private const val MAX_STREAMS = 2
+
+class SoundPoolUtils private constructor(context: Context) {
 
     private var mContext:Context = context
     private var mSoundPool: SoundPool? = null
     private var mVibrator: Vibrator? = null
-
     private var load = 0
-    private val  LEFT_VOLUME:Float = 1.0F
-    private val  RIGHT_VOLUME:Float = 1.0F
-    private val LOOP = 1
-    private val RATE = 1.0f
-    private val DEFAULT_PRIORITY = 1
+    private var videoId:Int = -1
 
     init {
         initSoundPool()
@@ -67,20 +68,32 @@ class SoundPoolUtils private constructor(context: Context) {
 
     }
 
-    fun playVideo(@RawRes reid:Int){
+    fun playVideo(@RawRes reid:Int,loop:Int){
 
+        videoId = -1
         mSoundPool?:initSoundPool()
         //加载音乐
         load = mSoundPool!!.load(mContext,reid,0)
         mSoundPool!!.setOnLoadCompleteListener{soundPool, _, status ->
             //加载完成后播放
             if (status==0){
-                soundPool.play(load, LEFT_VOLUME, RIGHT_VOLUME, DEFAULT_PRIORITY, LOOP, RATE)
+                videoId = soundPool.play(load, LEFT_VOLUME, RIGHT_VOLUME, DEFAULT_PRIORITY, loop, RATE)
             }
         }
     }
 
-    fun startVibrator(seconds:Long){
+    /**
+     * 取消声音和震动
+     */
+    fun cancelVideoAndVibrator(){
+        if (videoId==-1) return
+
+        mSoundPool?.stop(videoId)
+        mVibrator?.cancel()
+    }
+
+
+    private fun startVibrator(seconds:Long){
         mVibrator?:initVibrator()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
             val vibrator = VibrationEffect.createOneShot(seconds,100)
@@ -91,8 +104,14 @@ class SoundPoolUtils private constructor(context: Context) {
         }
     }
 
-    fun startVideoAndVibrator(@RawRes resId:Int, seconds: Long) {
-        playVideo(resId)
+    /**
+     * 开始播放音频和震动
+     * @param resId 音频源
+     * @param seconds 震动时长
+     * @param loop 循环次数
+     */
+    fun startVideoAndVibrator(@RawRes resId:Int,loop:Int, seconds: Long) {
+        playVideo(resId,loop)
         startVibrator(seconds)
     }
 

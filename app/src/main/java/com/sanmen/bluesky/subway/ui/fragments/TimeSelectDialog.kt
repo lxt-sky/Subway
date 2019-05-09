@@ -21,7 +21,9 @@ class TimeSelectDialog : DialogFragment(), KBubbleSeekBar.OnProgressChangedListe
 
 
 
-    private var delayTime:Float = 0f
+    private var delayTime:Int = 0
+
+    private var intervalTime:Int = 0
 
     private var listener: OnDialogCloseListener? = null
 
@@ -36,7 +38,8 @@ class TimeSelectDialog : DialogFragment(), KBubbleSeekBar.OnProgressChangedListe
 
 
         if (arguments!=null){
-            this.delayTime = arguments!!.getFloat(Constant.DELAY_TIME,0f)
+            this.delayTime = arguments!!.getInt(Constant.DELAY_TIME,0)
+            this.intervalTime = arguments!!.getInt(Constant.INTERVAL_TIME,0)
         }
         val builder = AlertDialog.Builder(activity)
         val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_time_select,null)
@@ -47,10 +50,17 @@ class TimeSelectDialog : DialogFragment(), KBubbleSeekBar.OnProgressChangedListe
             builder.create()
         }
 //        this.listener = activity as OnDialogCloseListener
-        val seekBar =dialogView.findViewById<KBubbleSeekBar>(R.id.seekBar)
-        seekBar.run {
+        //到站检测延迟时间
+        val sbDelayTime =dialogView.findViewById<KBubbleSeekBar>(R.id.sbDelayTime)
+        sbDelayTime.run {
             this.onProgressChangedListener = this@TimeSelectDialog
-            this.setProgress(delayTime)
+            this.setProgress(delayTime.toFloat())
+        }
+        //报警提示间隔时间
+        val sbIntervalTime = dialogView.findViewById<KBubbleSeekBar>(R.id.sbIntervalTime)
+        sbIntervalTime.let {
+            it.onProgressChangedListener = this@TimeSelectDialog
+            it.setProgress(intervalTime.toFloat())
         }
 
         return dialog
@@ -60,13 +70,13 @@ class TimeSelectDialog : DialogFragment(), KBubbleSeekBar.OnProgressChangedListe
     override fun onCancel(dialog: DialogInterface?) {
         super.onCancel(dialog)
         if (listener!=null){
-            listener!!.onClick(delayTime)
+            listener!!.onClick(delayTime,intervalTime)
         }
     }
 
 
-    public interface OnDialogCloseListener{
-        fun onClick(progress: Float)
+    interface OnDialogCloseListener{
+        fun onClick(progress1: Int,progress2: Int)
     }
 
     override fun onProgressChanged(
@@ -75,9 +85,10 @@ class TimeSelectDialog : DialogFragment(), KBubbleSeekBar.OnProgressChangedListe
         progressFloat: Float,
         fromUser: Boolean
     ) {
-        this.delayTime = progressFloat
-
-
+        when(bubbleSeekBar?.id){
+            R.id.sbDelayTime->this.delayTime = progress
+            R.id.sbIntervalTime->this.intervalTime = progress
+        }
     }
 
     override fun getProgressOnActionUp(bubbleSeekBar: KBubbleSeekBar?, progress: Int, progressFloat: Float) {

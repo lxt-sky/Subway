@@ -212,7 +212,9 @@ class ConnectActivity : BaseActivity(),PermissionInterface {
         loadView.run {
             this.nextText("未连接",0)
             this.setOnClickListener {
+
                 if (linkState!=2) return@setOnClickListener
+
                 val intent = Intent(this@ConnectActivity, AlarmActivity::class.java)
 
                 if (recordList.isNotEmpty()){

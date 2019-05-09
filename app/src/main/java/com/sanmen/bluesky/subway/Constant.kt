@@ -120,6 +120,10 @@ object Constant {
      */
     const val DELAY_TIME = "DELAY_TIME"
     /**
+     * 提示间隔时间
+     */
+    const val INTERVAL_TIME = "INTERVAL_TIME"
+    /**
      * 光照数据
      */
     const val LIGHT_DATA = "LIGHT_DATA"

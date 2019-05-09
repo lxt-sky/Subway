@@ -42,7 +42,7 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:id="@+id/ivSound"
-                android:background="@drawable/image_sound_clicked"
+                android:background="@drawable/ic_mute"
                 android:layout_gravity="center_vertical"
                 android:layout_marginLeft="20dp"
                 android:layout_marginRight="20dp"/>
