@@ -46,9 +46,13 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
 
     private var isAlarmOver: Boolean = false//是否产生已经报警，在出站时重置状态
 
+    private var isAlarmOver2: Boolean = false//是否产生已经报警，在出站时重置状态
+
     private var isAlarming: Boolean=false
 
     private var isBeginDelay:Boolean = false
+
+    private var isTrainInto:Boolean = false //列车是否进站
 
     private var alarmData = mutableListOf<AlarmInfo>()
 
@@ -226,7 +230,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
     private val itemClickListener = BaseQuickAdapter.OnItemClickListener{ _, _, _ ->
 
         //开启声音和震动提示
-        mSoundPoolUtils.startVideoAndVibrator(R.raw.ring,0,1000)
+        mSoundPoolUtils.startVideoAndVibrator(R.raw.voice_no_door_open,0,1000)
     }
 
     override fun onClick(progress1: Int,progress2: Int) {
@@ -258,16 +262,18 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
             }
             ACTION_SEARCH_PLATFORM_DEVICE_SUCCESS ->{//搜索到站台蓝牙
                 setAlarmTitle("列车已进站")
+                isTrainInto = true
+
 
             }
             ACTION_SEARCH_PLATFORM_DEVICE_FAILED ->{//列车已出站
                 setAlarmTitle("列车已出站")
+                isTrainInto = false
                 setDefaultState()
             }
             ACTION_READ_DATA_SUCCESS ->{//读取数据成功
                 val lightData = msg.getData<String>()
                 toParseCommand(lightData)
-
             }
             ACTION_READ_DATA_FAILED->{
                 Toast.makeText(this@AlarmActivity,"读取数据失败！",Toast.LENGTH_SHORT).show()
@@ -282,7 +288,7 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         isAlarmOver = false//是否产生已经报警，在出站时重置状态
         isAlarming=false
         isBeginDelay = false
-        isOpenTimeout = true//列车开门超时
+        isOpenTimeout = false//列车开门超时
         isDoorOpen = false
 
     }
@@ -315,12 +321,16 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
         alarmAdapter.notifyDataSetChanged()
         rvAlarmList.scrollToPosition(alarmData.size-1)
 
-        if(state){//灯亮
+        if(state){//灯亮，到站未开门的情况下
             //开启振动和声音
-            mSoundPoolUtils.startVideoAndVibrator(R.raw.ring,-1,1000)
+            mSoundPoolUtils.cancelVideoAndVibrator()
+            mSoundPoolUtils.startVideoAndVibrator(R.raw.voice_no_door_open,-1,1000)
+        }else{
+            mSoundPoolUtils.cancelVideoAndVibrator()
+            mSoundPoolUtils.playVideo(R.raw.voice_alarm,1)
         }
 
-        isAlarmOver = true
+//        isAlarmOver = true
     }
 
     /**
@@ -341,30 +351,34 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
             }
         }
 
-        if (!isAlarming){//如果未报警
+        if (isTrainInto&&!isAlarming){//如果未报警,前提是处于进站状态
             if (getAlarmState(lightValue)){//灯亮
                 if (!isBeginDelay){//是否开始计时
-                    mHandler.postDelayed({//时间到，判定开门
+                    mHandler.postDelayed({//根据指定延迟时间，开始判定开门
                         isAlarming = false
+                        isDoorOpen = false
                         isBeginDelay = true
+                        isAlarmOver = false
                     },(1000*delayTime).toLong())
                     isAlarming = true//已捕捉到报警信号
 
-                }else{//计时结束
-                    if (!isAlarmOver){
+                }else{//计时结束，开始判定开门
+                    if (!isAlarmOver&&!isDoorOpen){//如果未报过警，且未开门，执行报警提示，防止多次报警;
                         addOneAlarmInfo("车门未开启，请注意！！",true)
+                        isAlarmOver = true
                     }
-                    if (isDoorOpen){//车门由开到关
+                    if (isDoorOpen){//如果门由开到关，执行嘟嘟报警声提示
                         mSoundPoolUtils.cancelVideoAndVibrator()
-                        mSoundPoolUtils.playVideo(R.raw.dudu,0)//播放一次，嘟嘟声
+                        mSoundPoolUtils.playVideo(R.raw.voice_door_close_over,0)//播放一次，嘟嘟声
+                        isDoorOpen = false
                     }
                 }
-
+                isBeginDelay2 = false//重置为未报警
             }else{
                 //列车门为打开状态，灯灭，需要避免一开始为灯灭的情况
                 if (!isBeginDelay2){//已报警
                     mHandler.postDelayed({//开门后等待3秒，判定关门
-                        isAlarmOver = false
+                        isAlarmOver2 = false
                         isDoorOpen = true
                     },(1000*3).toLong())
 
@@ -373,17 +387,20 @@ class AlarmActivity : BaseActivity(), TimeSelectDialog.OnDialogCloseListener {
                     },(1000*10).toLong())
 
                     isBeginDelay2 = true
+                    isAlarmOver = true
                     //关闭报警提示
                     mSoundPoolUtils.cancelVideoAndVibrator()
                 }else{
-                    if (!isAlarmOver){
+                    if (!isAlarmOver2&&isOpenTimeout){//车门打开超时提示,滴滴声
                         addOneAlarmInfo("列车未关门，请注意！！",false)
+                        isOpenTimeout = false
+                        isAlarmOver2 = true
                     }
                 }
 
-                if (isOpenTimeout){//车门打开超时提示,滴滴声
-                    mSoundPoolUtils.playVideo(R.raw.didi,0)
-                }
+//                if (isOpenTimeout){//车门打开超时提示,滴滴声
+//
+//                }
             }
         }
 

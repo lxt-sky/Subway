@@ -48,7 +48,7 @@ private const val TAG = ".BluetoothService"
 
 class BluetoothService : Service() {
 
-    private val alarmDeviceName = "Lsensor"//MEIZU EP52 Lite,Lsensor
+    private val alarmDeviceName = "HC-05"//MEIZU EP52 Lite,Lsensor
 
     private val platformDeviceName = "BT20"//Lsensor-1
 
@@ -165,7 +165,13 @@ class BluetoothService : Service() {
         latestPlatformDevice = null
 
         mBluetoothAdapter.startDiscovery()
-
+        //开始搜索后8秒取消搜索
+        GlobalScope.launch {
+            delay(8000)
+            if(mBluetoothAdapter.isDiscovering){
+                mBluetoothAdapter.cancelDiscovery()
+            }
+        }
     }
 
     /**
@@ -330,7 +336,7 @@ class BluetoothService : Service() {
         }
 
         //搜到报警灯-列车上线
-        if (!linkAlarmDevice){//报警灯蓝牙
+        if (!linkAlarmDevice){//未连接到报警灯蓝牙，报警灯蓝牙
             if (device.name ==alarmDeviceName){
                 trainState = 0//列车刚上线
                 //清空列表
@@ -343,7 +349,7 @@ class BluetoothService : Service() {
             }
         }
 
-        if (linkAlarmDevice){//站台蓝牙
+        if (linkAlarmDevice){//已连接到报警灯蓝牙，站台蓝牙
 
             if (device.name ==platformDeviceName){
                 //列车进站

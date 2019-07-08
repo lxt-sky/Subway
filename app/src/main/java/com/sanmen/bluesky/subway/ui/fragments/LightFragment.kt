@@ -31,7 +31,7 @@ class LightFragment : Fragment() {
     /**
      * 单元值
      */
-    private var unitValue = 10000
+    private var unitValue = 5000
 
 
 

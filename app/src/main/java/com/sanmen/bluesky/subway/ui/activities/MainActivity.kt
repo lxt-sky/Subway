@@ -44,6 +44,7 @@ class MainActivity : BaseActivity(), View.OnClickListener {
                 intent.run {
                     this.setClass(this@MainActivity,ConnectActivity::class.java)
                     this.putExtra(Constant.DRIVE_DIRECTION,0)
+
                 }
             }
             R.id.btnDownStream->{

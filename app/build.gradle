@@ -7,22 +7,24 @@ apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-kapt'
 
 
-kapt {
-    generateStubs = true
-}
-
 android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "com.sanmen.bluesky.subway"
         minSdkVersion 22
-        targetSdkVersion 24
-        versionCode 1
-        versionName "1.0"
+        targetSdkVersion 28
+        //noinspection HighAppVersionCode
+        versionCode 2019070801
+        versionName "1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        javaCompileOptions { annotationProcessorOptions { includeCompileClasspath = true } }
     }
     buildTypes {
         release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug{
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -30,6 +32,24 @@ android {
     packagingOptions {
         exclude 'META-INF/atomicfu.kotlin_module'
     }
+
+    applicationVariants.all {
+        variant ->
+            variant.outputs.all { output ->
+                def outputFile = output.outputFile
+                if (outputFile != null && outputFile.name.endsWith('.apk')) {
+                    // apk_渠道名-版本号-版本名称-编译时间.apk
+                    def fileName = "Subway-${variant.buildType.name}-${variant.versionCode}-v${variant.versionName}-${buildTime()}.apk"
+                    outputFileName = fileName
+                }
+            }
+    }
+}
+
+static def buildTime(){
+    def date = new Date()
+    def formattedDate = date.format('yyyy_MM_dd')
+    return formattedDate
 }
 
 dependencies {
